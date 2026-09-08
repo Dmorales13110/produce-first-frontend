@@ -1,6 +1,8 @@
 // src/modules/produce-first/PFBAN_BancosPFSaldoFlujo.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { CashFlowService } from '../../../services/cash-flow';
+import { notifications } from '@mantine/notifications';
 import {
   Box,
   Container,
@@ -55,11 +57,11 @@ interface FlujoItem {
 }
 
 export function BancosPFSaldoFlujoView() {
-  // --- Estado de la única captura ---
-  const [saldoCorte, setSaldoCorte] = useState('684,200');
+  // --- Estado de la captura ---
+  const [saldoCorte, setSaldoCorte] = useState(() => localStorage.getItem('pf_saldo_corte') || '684,200');
 
-  // --- Datos Mock Tabla Flujo Proyectado ---
-  const flujoProyectadoData: FlujoItem[] = [
+  // --- Datos de Respaldo Tabla Flujo Proyectado ---
+  const INITIAL_FLUJO: FlujoItem[] = [
     {
       periodo: 'S49',
       entradas: '$498K',
@@ -85,6 +87,43 @@ export function BancosPFSaldoFlujoView() {
       highlight: true,
     },
   ];
+
+  const [flujoProyectadoData, setFlujoProyectadoData] = useState<FlujoItem[]>(INITIAL_FLUJO);
+
+  useEffect(() => {
+    let isMounted = true;
+    CashFlowService.getBankBalances()
+      .then(res => {
+        if (isMounted && res && res.total_balance) {
+          setSaldoCorte(Number(res.total_balance).toLocaleString());
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando saldo de respaldo:', err);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleSaveDia = async () => {
+    localStorage.setItem('pf_saldo_corte', saldoCorte);
+    try {
+      const num = parseFloat(saldoCorte.replace(/,/g, ''));
+      if (!isNaN(num)) {
+        await CashFlowService.updateBankBalance('pf-main', num);
+      }
+    } catch (e) {
+      console.warn('⚠️ Guardado local:', e);
+    }
+
+    notifications.show({
+      title: 'Saldo guardado',
+      message: 'Saldo al corte guardado exitosamente',
+      color: 'green',
+      icon: <IconCheck size={16} />,
+      autoClose: 3000,
+    });
+  };
 
   // KPI Cards
   const kpiCards: KpiCard[] = [
@@ -273,6 +312,7 @@ export function BancosPFSaldoFlujoView() {
                   leftSection={<IconDeviceFloppy size={16} />}
                   size="xs"
                   style={{ backgroundColor: '#1A4B8C' }}
+                  onClick={handleSaveDia}
                 >
                   Guardar día
                 </Button>

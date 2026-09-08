@@ -1,6 +1,7 @@
 // src/modules/produce-first/PF4_PlanificadorCarga.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -64,14 +65,41 @@ export function PlanificadorCargaView() {
   const [filtroStatus, setFiltroStatus] = useState<string | null>('Todos');
   const [semanaActiva, setSemanaActiva] = useState('S49');
 
-  // Datos mock de carga
-  const cargaData: CargaItem[] = [
+  // Datos de respaldo de carga
+  const INITIAL_CARGA: CargaItem[] = [
     { cliente: 'GreenLeaf', destino: 'Maspeth NY', producto: 'Shanghai Bok', pallets: 10, cajas: 450, peso: '4,500 kg', fecha: 'Lun 18', status: 'Programado' },
     { cliente: 'Grubmarket', destino: 'Brooklyn NY', producto: 'Choy Mieu', pallets: 8, cajas: 360, peso: '3,600 kg', fecha: 'Mar 19', status: 'Programado' },
     { cliente: 'Fresh Direct', destino: 'Vancouver', producto: 'Big Bok Choy', pallets: 12, cajas: 420, peso: '4,200 kg', fecha: 'Mié 20', status: 'Confirmado' },
     { cliente: 'Tay Shing', destino: 'Markham ON', producto: 'Coliflor', pallets: 6, cajas: 210, peso: '2,100 kg', fecha: 'Jue 21', status: 'En Ruta' },
     { cliente: 'Manley Sales', destino: 'Scarborough', producto: 'Tips', pallets: 4, cajas: 224, peso: '2,240 kg', fecha: 'Vie 22', status: 'Entregado' },
   ];
+
+  const [cargaData, setCargaData] = useState<CargaItem[]>(INITIAL_CARGA);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/sales')
+      .then(res => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: CargaItem[] = res.map((s: any) => ({
+            cliente: s.customer_name || s.customer || 'Cliente',
+            destino: s.destination || 'USA',
+            producto: s.product_name || s.product || 'Vegetal',
+            pallets: Math.round(Number(s.boxes || 400) / 45) || 10,
+            cajas: Number(s.boxes || 450),
+            peso: `${(Number(s.boxes || 450) * 10).toLocaleString()} kg`,
+            fecha: s.delivery_date ? new Date(s.delivery_date).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric' }) : 'Lun 18',
+            status: s.status || 'Programado',
+          }));
+          setCargaData(mapped);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando cargas de respaldo:', err);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // KPI Cards
   const kpiCards: KpiCard[] = [

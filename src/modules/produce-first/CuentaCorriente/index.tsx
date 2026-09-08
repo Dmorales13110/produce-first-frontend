@@ -1,6 +1,7 @@
 // src/modules/produce-first/PF7_CuentaCorrienteProductor.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -68,8 +69,8 @@ export function CuentaCorrienteProductorView() {
   const [filtroEstado, setFiltroEstado] = useState('Con saldo');
   const [selectedProductor, setSelectedProductor] = useState<string>('Agrícola JAV');
 
-  // --- Datos Mock Tabla General ---
-  const resumenProductores: ResumenProductor[] = [
+  // --- Datos de Respaldo Tabla General ---
+  const INITIAL_RESUMEN: ResumenProductor[] = [
     {
       id: '1',
       productor: 'Agrícola JAV',
@@ -116,6 +117,34 @@ export function CuentaCorrienteProductorView() {
       saldoFavor: '$74,350',
     },
   ];
+
+  const [resumenProductores, setResumenProductores] = useState<ResumenProductor[]>(INITIAL_RESUMEN);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.allSettled([
+      api.get<any[]>('/growers'),
+      api.get<any[]>('/liquidation-pf'),
+    ]).then(([growRes]) => {
+      if (!isMounted) return;
+
+      if (growRes.status === 'fulfilled' && Array.isArray(growRes.value) && growRes.value.length > 0) {
+        const mapped: ResumenProductor[] = growRes.value.map((g: any, idx: number) => ({
+          id: String(g.id || idx + 1),
+          productor: g.commercial_name || g.name || 'Productor',
+          anticipos: `$${Number(g.advance_total || 25000).toLocaleString()}`,
+          semilla: `$${Number(g.seeds_total || 0).toLocaleString()}`,
+          material: `$${Number(g.materials_total || 30000).toLocaleString()} MXN`,
+          liquidado: `$${Number(g.liquidated_total || 350000).toLocaleString()}`,
+          saldoFavor: `$${Number(g.balance_total || 280000).toLocaleString()}`,
+        }));
+        setResumenProductores(mapped);
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // --- Datos Mock Tabla Detalle Auditable ---
   const detalleMovimientos: DetalleMovimiento[] = [

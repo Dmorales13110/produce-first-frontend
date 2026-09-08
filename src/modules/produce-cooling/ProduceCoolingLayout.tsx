@@ -1,6 +1,7 @@
 // src/modules/produce-cooling/ProduceCoolingLayout.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { SubmoduleLoader } from '../../components/SubmoduleLoader';
 import {
   Box,
   Container,
@@ -252,7 +253,9 @@ export function ProduceCoolingLayout({ children }: ProduceCoolingLayoutProps) {
 
           {modules.map((module) => (
             <Tabs.Panel key={module.id} value={module.id} pt="md">
-              {renderContent()}
+              <Suspense fallback={<SubmoduleLoader message="Cargando datos de Produce Cooling..." />}>
+                {renderContent()}
+              </Suspense>
             </Tabs.Panel>
           ))}
         </Tabs>

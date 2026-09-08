@@ -1,6 +1,7 @@
 // src/modules/produce-first/PF8_MotorLiquidaciones.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -91,14 +92,42 @@ export function MotorLiquidacionesPFView() {
   const [filtroEstatus, setFiltroEstatus] = useState<string | null>('Todas');
   const [vistaPeriodo, setVistaPeriodo] = useState('Semana');
 
-  // --- Datos Mock GENERAR · Liquidación de Agrícola JAV ---
-  const generacionData: GeneracionItem[] = [
+  // --- Datos de Respaldo GENERAR · Liquidación de Agrícola JAV ---
+  const INITIAL_GENERACION: GeneracionItem[] = [
     { camion: '25', factura: 'F-1660', boleta: 'JAV-0508', cliente: 'Fresh Direct', vegetal: 'Bok Choy Mieu', cajas: 180, precio: 20.00, venta: 3600, comision: 360 },
     { camion: '26', factura: 'F-1661', boleta: 'JAV-0509', cliente: 'HJ Produce West', vegetal: 'Bok Choy Mieu', cajas: 360, precio: 19.00, venta: 6840, comision: 684 },
     { camion: '27', factura: 'F-1663', boleta: 'JAV-0510', cliente: 'Greenleaf', vegetal: 'Bok Choy Mieu', cajas: 450, precio: 17.06, venta: 7677, comision: 768 },
     { camion: '28', factura: 'F-1664', boleta: 'JAV-0511', cliente: 'Greenleaf', vegetal: 'Bok Choy Mieu', cajas: 405, precio: 17.06, venta: 6909, comision: 691 },
     { camion: '29', factura: 'F-1665', boleta: 'JAV-0512', cliente: 'Grubmarket', vegetal: 'Bok Choy Mieu', cajas: 315, precio: 19.00, venta: 5985, comision: 599 },
   ];
+
+  const [generacionData, setGeneracionData] = useState<GeneracionItem[]>(INITIAL_GENERACION);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/liquidation-pf')
+      .then(res => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: GeneracionItem[] = res.map((item: any, idx: number) => ({
+            camion: item.truck_number || String(25 + idx),
+            factura: item.invoice_number || `F-${1660 + idx}`,
+            boleta: item.ticket_number || `JAV-${String(508 + idx).padStart(4, '0')}`,
+            cliente: item.customer_name || 'Cliente Mayorista',
+            vegetal: item.product_name || 'Bok Choy Mieu',
+            cajas: Number(item.boxes || 180),
+            precio: Number(item.unit_price || 18.50),
+            venta: Number(item.total_sale || 3600),
+            comision: Number(item.commission || 360),
+          }));
+          setGeneracionData(mapped);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando liquidaciones de respaldo:', err);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // --- Datos Mock El retorno por boleta ---
   const retornoBoletaData: RetornoBoletaItem[] = [

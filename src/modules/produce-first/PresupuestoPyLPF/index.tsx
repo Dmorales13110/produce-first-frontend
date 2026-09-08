@@ -1,6 +1,8 @@
 // src/modules/produce-first/PF10_PresupuestoPyLPF.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BudgetService } from '../../../services/budget';
+import { PLService } from '../../../services/pl';
 import {
   Box,
   Container,
@@ -78,21 +80,47 @@ export function PresupuestoPyLPFView() {
   const [conceptoComision, setConceptoComision] = useState('10%');
   const [tcPlan, setTcPlan] = useState('17.68');
 
-  // --- Datos Mock Sección 1: Pronóstico de Ingresos ---
-  const pronosticoData: PronosticoItem[] = [
+  // --- Datos de Respaldo Sección 1: Pronóstico de Ingresos ---
+  const INITIAL_PRONOSTICO: PronosticoItem[] = [
     { fuente: 'Daily Veggies - San Aparicio', cajas: '151,140', fob: '$2,275,490', comision: '$227,550', enfriado: '$22,671', ingreso: '$250,221' },
     { fuente: 'Agrícola JAV - La Escondida', cajas: '152,422', fob: '$2,224,502', comision: '$222,450', enfriado: '$22,863', ingreso: '$245,313' },
     { fuente: 'Fernando García - Snow Pea Tips', cajas: '35,280', fob: '$470,282', comision: '$47,028', enfriado: '$5,292', ingreso: '$52,320' },
   ];
 
-  // --- Datos Mock Sección 2: Presupuesto Gastos de Operación ---
-  const gastosData: GastoItem[] = [
+  // --- Datos de Respaldo Sección 2: Presupuesto Gastos de Operación ---
+  const INITIAL_GASTOS: GastoItem[] = [
     { categoria: 'JFNO', presupuesto: '$84,500', nota: 'gasto operativo' },
     { categoria: 'Wendy', presupuesto: '$22,300', nota: '' },
     { categoria: 'Néstor', presupuesto: '$12,000', nota: 'gasto operativo' },
     { categoria: 'Oficina, sistema y bancos', presupuesto: '$38,200', nota: '' },
     { categoria: 'Otros', presupuesto: '$9,800', nota: '' },
   ];
+
+  const [pronosticoData, setPronosticoData] = useState<PronosticoItem[]>(INITIAL_PRONOSTICO);
+  const [gastosData, setGastosData] = useState<GastoItem[]>(INITIAL_GASTOS);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.allSettled([
+      BudgetService.getSeasons(),
+      BudgetService.getCosts(),
+      PLService.getSummary(),
+    ]).then(([seasonsRes, costsRes]) => {
+      if (!isMounted) return;
+
+      if (costsRes.status === 'fulfilled' && Array.isArray(costsRes.value) && costsRes.value.length > 0) {
+        const mappedGastos: GastoItem[] = costsRes.value.map((c: any) => ({
+          categoria: c.concept || c.category || 'Gasto Operativo',
+          presupuesto: `$${Number(c.budgeted || c.amount || 20000).toLocaleString()}`,
+          nota: c.notes || 'presupuestado',
+        }));
+        setGastosData(mappedGastos);
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // --- Datos Mock Sección 3: Resultado P&L ---
   const pyLData: PyLItem[] = [

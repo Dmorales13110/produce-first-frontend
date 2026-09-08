@@ -5,7 +5,7 @@ export interface ModuleConfig {
   label: string;
   path: string;
   icon: string;
-  roles: ('admin' | 'grower' | 'cooling' | 'comercial')[];
+  roles: ('admin' | 'grower' | 'cooling' | 'comercial' | 'customer')[];
 }
 
 export const modulesConfig: ModuleConfig[] = [
@@ -15,7 +15,7 @@ export const modulesConfig: ModuleConfig[] = [
     label: 'Dashboard PF',
     path: '/produce-first',
     icon: 'IconDashboard',
-    roles: ['admin', 'grower', 'cooling', 'comercial'],
+    roles: ['admin'],
   },
   
   // PLANEACIÓN COMERCIAL
@@ -24,21 +24,21 @@ export const modulesConfig: ModuleConfig[] = [
     label: 'PF1 · Catálogos',
     path: '/produce-first/pf1',
     icon: 'IconShoppingCart',
-    roles: ['admin', 'comercial', 'grower', 'cooling'],
+    roles: ['admin'],
   },
   {
     id: 'PF2',
     label: 'PF2 · Ventas vs Siembra',
     path: '/produce-first/pf2',
     icon: 'IconCalendar',
-    roles: ['admin', 'comercial', 'grower'],
+    roles: ['admin'],
   },
   {
     id: 'PF3',
     label: 'PF3 · Pronóstico Semanal',
     path: '/produce-first/pf3',
     icon: 'IconChartBar',
-    roles: ['admin', 'comercial', 'grower'],
+    roles: ['admin'],
   },
   
   // VENTA Y EMBARQUE
@@ -47,28 +47,28 @@ export const modulesConfig: ModuleConfig[] = [
     label: 'PF4 · Planificador de Carga',
     path: '/produce-first/pf4',
     icon: 'IconTruck',
-    roles: ['admin', 'comercial', 'cooling'],
+    roles: ['admin'],
   },
   {
     id: 'PF5',
     label: 'PF5 · Proforma',
     path: '/produce-first/pf5',
     icon: 'IconFileInvoice',
-    roles: ['admin', 'comercial', 'cooling'],
+    roles: ['admin'],
   },
   {
     id: 'PF6',
     label: 'PF6 · CxC de Clientes',
     path: '/produce-first/pf6',
     icon: 'IconCreditCardHand',
-    roles: ['admin', 'comercial', 'cooling'],
+    roles: ['admin'],
   },
   {
     id: 'PFLQC',
     label: 'PFLQC · Liquidaciones y Quejas',
     path: '/produce-first/pflqc',
     icon: 'IconReceipt',
-    roles: ['admin', 'comercial', 'cooling'],
+    roles: ['admin'],
   },
   
   // COMPRAS Y MATERIAL
@@ -77,14 +77,14 @@ export const modulesConfig: ModuleConfig[] = [
     label: 'PFOC · Órdenes de Compra',
     path: '/produce-first/pfoc',
     icon: 'IconClipboardList',
-    roles: ['admin', 'comercial', 'cooling'],
+    roles: ['admin'],
   },
   {
     id: 'PFMAT',
     label: 'PFMAT · Material de Empaque',
     path: '/produce-first/pfmat',
     icon: 'IconPackage',
-    roles: ['admin', 'comercial', 'cooling'],
+    roles: ['admin'],
   },
   
   // PRODUCTORES
@@ -93,51 +93,51 @@ export const modulesConfig: ModuleConfig[] = [
     label: 'PF7 · Cuenta Corriente',
     path: '/produce-first/pf7',
     icon: 'IconUsers',
-    roles: ['admin', 'comercial', 'grower'],
+    roles: ['admin'],
   },
   {
     id: 'PF8',
     label: 'PF8 · Motor de Liquidaciones',
     path: '/produce-first/pf8',
     icon: 'IconCalculator',
-    roles: ['admin', 'comercial', 'grower'],
+    roles: ['admin'],
   },
   
   // DINERO PF
   {
     id: 'PF10',
-    label: 'PF10 · Presupuesto y P&L',
+    label: 'PF10 · Resultados Semanales',
     path: '/produce-first/pf10',
-    icon: 'IconMoneybag',
-    roles: ['admin', 'comercial'],
+    icon: 'IconTrendingUp',
+    roles: ['admin'],
   },
   {
     id: 'PF9',
-    label: 'PF9 · CxP de PF',
+    label: 'PF9 · CxP Gastos de Venta',
     path: '/produce-first/pf9',
-    icon: 'IconCreditCardPay',
-    roles: ['admin', 'comercial', 'cooling'],
+    icon: 'IconCreditCard',
+    roles: ['admin'],
   },
   {
     id: 'PFBAN',
-    label: 'PFBAN · Bancos PF',
+    label: 'PFBAN · Bancos y Tesorería',
     path: '/produce-first/pfban',
     icon: 'IconBuildingBank',
-    roles: ['admin', 'comercial'],
+    roles: ['admin'],
   },
   {
     id: 'PFNOM',
     label: 'PFNOM · Nómina y Gastos',
     path: '/produce-first/pfnom',
     icon: 'IconList',
-    roles: ['admin', 'comercial'],
+    roles: ['admin'],
   },
   {
     id: 'PFCONT',
     label: 'PFCONT · Contpaqi PF',
     path: '/produce-first/pfcont',
     icon: 'IconDatabase',
-    roles: ['admin', 'comercial'],
+    roles: ['admin'],
   },
   
   // RESULTADO
@@ -146,14 +146,14 @@ export const modulesConfig: ModuleConfig[] = [
     label: 'PFREG · Registro Liquidaciones',
     path: '/produce-first/pfreg',
     icon: 'IconReportMoney',
-    roles: ['admin', 'comercial'],
+    roles: ['admin'],
   },
   {
     id: 'PFDASH',
     label: 'PFDASH · Dashboard PF',
     path: '/produce-first/pfdash',
     icon: 'IconChartPie',
-    roles: ['admin', 'comercial'],
+    roles: ['admin'],
   },
   
   // ADMINISTRACIÓN
@@ -165,27 +165,13 @@ export const modulesConfig: ModuleConfig[] = [
     roles: ['admin'],
   },
   
-  // PORTALES
+  // PORTAL DE CLIENTES
   {
     id: 'PFW1',
     label: 'PFW1 · Client Portal',
     path: '/produce-first/pfw1',
     icon: 'IconWorld',
-    roles: ['admin', 'comercial', 'cooling'],
-  },
-  {
-    id: 'PFW2',
-    label: 'PFW2 · Portal del Productor',
-    path: '/produce-first/pfw2',
-    icon: 'IconPlant',
-    roles: ['admin', 'comercial', 'grower'],
-  },
-  {
-    id: 'R07',
-    label: 'R07 · Visitas del Agrónomo',
-    path: '/produce-first/r07',
-    icon: 'IconMapPin',
-    roles: ['admin', 'grower'],
+    roles: ['admin', 'customer'],
   },
 ];
 

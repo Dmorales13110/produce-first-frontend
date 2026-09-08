@@ -4,8 +4,10 @@ import {
   IconLayersIntersect, IconLabel, IconClipboardList, IconBuilding,
   IconBook, IconSeeding, IconNotes, IconChartBar, IconTicket
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { api } from '../../services/apiClient';
+import { SubmoduleLoader } from '../../components/SubmoduleLoader';
 
 // Sub-módulos del ecosistema Growers (Tus vistas viejas)
 import DashboardView  from './components/GrowerDashboard';
@@ -53,10 +55,44 @@ import  GrowerLogBook  from './components/GrowerLogBook';           // G04
 import  GrowerForecast  from './components/GrowerForecast';         // G05
 import GrowerHarvestTicket  from './components/GrowerHarvestTicket'; // G07
 
+interface RanchoOption {
+  id: string;
+  name: string;
+  growerName: string;
+}
+
+const DEFAULT_RANCHOS: RanchoOption[] = [
+  { id: 'san_aparicio', name: 'San Aparicio', growerName: 'Daily Veggies' },
+  { id: 'la_escondida', name: 'La Escondida', growerName: 'Agrícola JAV' },
+];
+
 export default function GrowerDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeRancho, setActiveRancho] = useState<'san_aparicio' | 'la_escondida'>('san_aparicio');
+  const [ranchos, setRanchos] = useState<RanchoOption[]>(DEFAULT_RANCHOS);
+  const [activeRanchoId, setActiveRanchoId] = useState<string>('san_aparicio');
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/lots')
+      .then(res => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: RanchoOption[] = res.map((lot: any) => ({
+            id: String(lot.id),
+            name: lot.name || `Rancho ${lot.code || ''}`,
+            growerName: lot.grower_name || lot.grower?.commercial_name || 'Grupo Produce First',
+          }));
+          setRanchos(mapped);
+          setActiveRanchoId(mapped[0].id);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando ranchos predeterminados:', err);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  const currentRancho = ranchos.find(r => r.id === activeRanchoId) || ranchos[0] || DEFAULT_RANCHOS[0];
 
   // Mapeo unificado con nombres e IDs en ESPAÑOL y legibles para el cliente
   const tabs = [
@@ -67,43 +103,30 @@ export default function GrowerDashboard() {
     { id: 'concentrates', path: '/grower/concentrados', label: 'Concentrados', icon: IconLayersIntersect },
     { id: 'sectors', path: '/grower/sectores', label: 'Sectores', icon: IconLabel },
     { id: 'planning', path: '/grower/planeacion', label: 'Planeación', icon: IconClipboardList },
-
   ] as const;
 
   return (
     <Box style={{ backgroundColor: '#F4F3EF', minHeight: '100vh', padding: '16px' }}>
       {/* 1. Selector de Ranchos Superior */}
       <Group gap="xs" mb="md">
-        <UnstyledButton
-          onClick={() => setActiveRancho('san_aparicio')}
-          style={{
-            backgroundColor: activeRancho === 'san_aparicio' ? '#1F5C3A' : '#FFFFFF',
-            color: activeRancho === 'san_aparicio' ? '#FFFFFF' : '#3A3A34',
-            border: '1px solid #D8E4D2',
-            padding: '6px 16px',
-            borderRadius: '20px',
-            fontSize: '13px',
-            fontWeight: 600,
-            transition: 'all 0.2s ease'
-          }}
-        >
-          Daily Veggies · San Aparicio
-        </UnstyledButton>
-        <UnstyledButton
-          onClick={() => setActiveRancho('la_escondida')}
-          style={{
-            backgroundColor: activeRancho === 'la_escondida' ? '#1F5C3A' : '#FFFFFF',
-            color: activeRancho === 'la_escondida' ? '#FFFFFF' : '#3A3A34',
-            border: '1px solid #D8E4D2',
-            padding: '6px 16px',
-            borderRadius: '20px',
-            fontSize: '13px',
-            fontWeight: 600,
-            transition: 'all 0.2s ease'
-          }}
-        >
-          Agrícola JAV · La Escondida
-        </UnstyledButton>
+        {ranchos.map((rancho) => (
+          <UnstyledButton
+            key={rancho.id}
+            onClick={() => setActiveRanchoId(rancho.id)}
+            style={{
+              backgroundColor: activeRanchoId === rancho.id ? '#1F5C3A' : '#FFFFFF',
+              color: activeRanchoId === rancho.id ? '#FFFFFF' : '#3A3A34',
+              border: '1px solid #D8E4D2',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '13px',
+              fontWeight: 600,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {rancho.growerName} · {rancho.name}
+          </UnstyledButton>
+        ))}
       </Group>
 
       {/* 2. Banner Principal Módulo Grower */}
@@ -112,7 +135,7 @@ export default function GrowerDashboard() {
           <IconBuilding size={28} stroke={1.5} style={{ marginTop: '2px', opacity: 0.9 }} />
           <Stack gap={2}>
             <Title order={3} fw={700} style={{ letterSpacing: '-0.5px', fontSize: '20px' }}>
-              {activeRancho === 'san_aparicio' ? 'Grupo Produce First — San Aparicio' : 'Agrícola JAV — La Escondida'}
+              {currentRancho.growerName} — {currentRancho.name}
             </Title>
             <Text size="xs" style={{ opacity: 0.8, fontWeight: 500 }}>
               Control de temporada · Invierno 2026-2027
@@ -154,51 +177,53 @@ export default function GrowerDashboard() {
 
       {/* 3. Contenedor de Sub-pantallas manejado por el Router de Verdad */}
       <Box style={{ backgroundColor: '#FFFFFF', borderRadius: '0 0 8px 8px', padding: '24px', border: '1px solid #E0DDD2', borderTop: 'none' }}>
-        <Routes>
-          {/* Vistas Core */}
-          <Route path="dashboard" element={<DashboardView />} />
-          <Route path="calendario" element={<GrowerCalendar />} />
-          <Route path="captura" element={<GrowerCapture />} />
-          <Route path="pl" element={<GrowerPL />} />
-          <Route path="concentrados" element={<GrowerConcentrated />} />
-          <Route path="sectores" element={<GrowerSectors />} />
-          <Route path="planeacion" element={<GrowerPlanning />} />
+        <Suspense fallback={<SubmoduleLoader message="Cargando datos del módulo de Grower..." />}>
+          <Routes>
+            {/* Vistas Core */}
+            <Route path="dashboard" element={<DashboardView />} />
+            <Route path="calendario" element={<GrowerCalendar />} />
+            <Route path="captura" element={<GrowerCapture />} />
+            <Route path="pl" element={<GrowerPL />} />
+            <Route path="concentrados" element={<GrowerConcentrated />} />
+            <Route path="sectores" element={<GrowerSectors />} />
+            <Route path="planeacion" element={<GrowerPlanning />} />
 
-          {/* NUEVAS RUTAS FÍSICAS EN ESPAÑOL VINCULADAS AL SIDEBAR */}
-          <Route path="fichas-tecnicas" element={<GrowerTechnical />} />
-          <Route path="bitacora" element={<GrowerLogBook />} />
-          <Route path="pronostico" element={<GrowerForecast />} />
-          <Route path="boleta-cosecha" element={<GrowerHarvestTicket />} />
+            {/* NUEVAS RUTAS FÍSICAS EN ESPAÑOL VINCULADAS AL SIDEBAR */}
+            <Route path="fichas-tecnicas" element={<GrowerTechnical />} />
+            <Route path="bitacora" element={<GrowerLogBook />} />
+            <Route path="pronostico" element={<GrowerForecast />} />
+            <Route path="boleta-cosecha" element={<GrowerHarvestTicket />} />
 
-          {/* Insumos y Semillas */}
-          <Route path="orders" element={<GrowerOrders />} />
-          <Route path="catalog" element={<GrowerCatalog />} />
-          <Route path="seeds-flow" element={<GrowerSeedsFlow />} />
+            {/* Insumos y Semillas */}
+            <Route path="orders" element={<GrowerOrders />} />
+            <Route path="catalog" element={<GrowerCatalog />} />
+            <Route path="seeds-flow" element={<GrowerSeedsFlow />} />
 
-          <Route path="inventory" element={<GrowerInventory />} />
+            <Route path="inventory" element={<GrowerInventory />} />
 
-          <Route path="season-budget" element={<GrowerSeasonBudget />} />
-          <Route path="accounts-payable" element={<GrowerAccountsPayable />} />
-          <Route path="accounts-receivable" element={<GrowerAccountsReceivable />} />
-          <Route path="banks-and-cash-flow" element={<GrowerBanksAndCashflow />} />
-          <Route path="contpaqi" element={<GrowerContpaqiExport />} />
-          <Route path="weekly-payroll" element={<GrowerWeeklyPayroll />} />
+            <Route path="season-budget" element={<GrowerSeasonBudget />} />
+            <Route path="accounts-payable" element={<GrowerAccountsPayable />} />
+            <Route path="accounts-receivable" element={<GrowerAccountsReceivable />} />
+            <Route path="banks-and-cash-flow" element={<GrowerBanksAndCashflow />} />
+            <Route path="contpaqi" element={<GrowerContpaqiExport />} />
+            <Route path="weekly-payroll" element={<GrowerWeeklyPayroll />} />
 
-          <Route path="grower-finance-dashboard" element={<GrowerFinanceDashboardView />} />
-          <Route path="pl-sector" element={<GrowerPLSector />} />
-          <Route path="yield-vs-real" element={<GrowerYieldVsFicha />} />
-          <Route path="season-plan-vs-real" element={<GrowerSeasonPlanVsReal />} />
-          <Route path="pf-liquidations" element={<GrowerPFLiquidation />} />
+            <Route path="grower-finance-dashboard" element={<GrowerFinanceDashboardView />} />
+            <Route path="pl-sector" element={<GrowerPLSector />} />
+            <Route path="yield-vs-real" element={<GrowerYieldVsFicha />} />
+            <Route path="season-plan-vs-real" element={<GrowerSeasonPlanVsReal />} />
+            <Route path="pf-liquidations" element={<GrowerPFLiquidation />} />
 
-          <Route path="employees" element={<GrowerEmployees />} />
-          <Route path="attendance" element={<GrowerAttendance />} />
-          <Route path="machinery" element={<GrowerMachinery />} />
-          <Route path="card-conciliation" element={<GrowerCardConciliation />} />
-          <Route path="user-permissions" element={<GrowerUsersPermissions />} />
+            <Route path="employees" element={<GrowerEmployees />} />
+            <Route path="attendance" element={<GrowerAttendance />} />
+            <Route path="machinery" element={<GrowerMachinery />} />
+            <Route path="card-conciliation" element={<GrowerCardConciliation />} />
+            <Route path="user-permissions" element={<GrowerUsersPermissions />} />
 
-          {/* Redirección por defecto si entran a /grower limpio */}
-          <Route path="*" element={<Navigate to="dashboard" replace />} />
-        </Routes>
+            {/* Redirección por defecto si entran a /grower limpio */}
+            <Route path="*" element={<Navigate to="dashboard" replace />} />
+          </Routes>
+        </Suspense>
       </Box>
     </Box>
   );

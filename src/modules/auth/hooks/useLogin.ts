@@ -42,8 +42,12 @@ export const useLogin = () => {
                     token: userData.token || '',
                 });
 
-                // Redirigir al dashboard
-                navigate('/dashboard', { replace: true });
+                // Redirigir al dashboard o al portal de clientes según el rol
+                if (userData.role === 'customer') {
+                    navigate('/portal-clientes', { replace: true });
+                } else {
+                    navigate('/dashboard', { replace: true });
+                }
             }
 
             return userData;

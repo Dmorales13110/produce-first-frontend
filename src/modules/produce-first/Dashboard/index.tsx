@@ -1,6 +1,7 @@
 // src/modules/produce-first/ProduceFirstDashboard.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -80,7 +81,7 @@ export function ProduceFirstDashboardView() {
   const [estadoClientes, setEstadoClientes] = useState('Activos');
 
   // --- Datos Mock Clientes ---
-  const clientesData: ClienteItem[] = [
+  const INITIAL_CLIENTES: ClienteItem[] = [
     { cliente: 'GreenLeaf Produce', ciudad: 'Maspeth NY', taxId: '824188850', credito: '15d', cajas: '98,515', ventaUsd: '$1,252,035', avgCj: '$12.71' },
     { cliente: 'Grubmarket', ciudad: 'Brooklyn NY', taxId: '464890268', credito: '15d', cajas: '74,743', ventaUsd: '$1,085,476', avgCj: '$14.52' },
     { cliente: 'Fresh Direct', ciudad: 'Vancouver', taxId: '856228887', credito: '15d', cajas: '55,986', ventaUsd: '$793,558', avgCj: '$14.17' },
@@ -89,13 +90,56 @@ export function ProduceFirstDashboardView() {
   ];
 
   // --- Datos Mock Productores ---
-  const productoresData: ProductorItem[] = [
+  const INITIAL_PRODUCTORES: ProductorItem[] = [
     { productor: 'Daily Veggies', contacto: 'Efrén Hernández', modalidad: '10% + $0.15 enfriado', especialidad: 'Shanghai Bok · Baby Bok', cajas: '147,467', ventaUsd: '$1,937,112' },
     { productor: 'Agrícola JAV', contacto: 'Raúl Monter', modalidad: '10% + $0.15 enfriado', especialidad: 'Mieu · Coliflor', cajas: '93,839', ventaUsd: '$1,220,559' },
     { productor: 'Daniel Zermeño', contacto: 'Cristóbal Loza', modalidad: '10% + $0.15 enfriado', especialidad: 'Coliflor · Celtuce · Mini Napa', cajas: '81,601', ventaUsd: '$1,047,046' },
     { productor: 'Fernando García', contacto: 'Fernando García', modalidad: '10% + $0.15 enfriado', especialidad: 'Snow Pea Tips (~1,500 cj/sem)', cajas: '48,075', ventaUsd: '$640,803' },
     { productor: 'Plantisano', contacto: 'Ismael Padilla', modalidad: '10% + $0.15 enfriado', especialidad: 'Coliflor', cajas: '12,822', ventaUsd: '$189,129' },
   ];
+
+  const [clientesList, setClientesList] = useState<ClienteItem[]>(INITIAL_CLIENTES);
+  const [productoresList, setProductoresList] = useState<ProductorItem[]>(INITIAL_PRODUCTORES);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/customers')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: ClienteItem[] = res.slice(0, 8).map((c, idx) => ({
+            cliente: c.name || c.business_name || `Cliente ${idx + 1}`,
+            ciudad: c.city || 'USA / Canadá',
+            taxId: c.tax_id || c.rfc || '—',
+            credito: c.credit_terms || '15d',
+            cajas: (c.total_boxes || 50000).toLocaleString(),
+            ventaUsd: `$${(c.total_sales || 750000).toLocaleString()}`,
+            avgCj: `$${(c.avg_price || 13.5).toFixed(2)}`,
+          }));
+          setClientesList(mapped);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-DASH] Fallback clientes:', err));
+
+    api.get<any[]>('/growers')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: ProductorItem[] = res.slice(0, 8).map((g) => ({
+            productor: g.name || g.grower_name || 'Productor Asociado',
+            contacto: g.contact_name || g.phone || 'Representante',
+            modalidad: '10% + $0.15 enfriado',
+            especialidad: g.specialty || 'Hortalizas orientales',
+            cajas: (g.total_boxes || 80000).toLocaleString(),
+            ventaUsd: `$${(g.total_sales || 1100000).toLocaleString()}`,
+          }));
+          setProductoresList(mapped);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-DASH] Fallback productores:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // KPI Cards
   const kpiCards: KpiCard[] = [
@@ -300,7 +344,7 @@ export function ProduceFirstDashboardView() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {clientesData.map((row, idx) => (
+                    {clientesList.map((row, idx) => (
                       <Table.Tr key={idx} style={{ borderBottom: '1px solid #F0F4FF' }}>
                         <Table.Td style={{ fontSize: '12px', fontWeight: 600, color: '#1A3A5C' }}>{row.cliente}</Table.Td>
                         <Table.Td style={{ fontSize: '12px', color: '#4B5563' }}>{row.ciudad}</Table.Td>
@@ -358,7 +402,7 @@ export function ProduceFirstDashboardView() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {productoresData.map((row, idx) => (
+                    {productoresList.map((row, idx) => (
                       <Table.Tr key={idx} style={{ borderBottom: '1px solid #F0F4FF' }}>
                         <Table.Td style={{ fontSize: '12px', fontWeight: 600, color: '#1A3A5C' }}>{row.productor}</Table.Td>
                         <Table.Td style={{ fontSize: '12px', color: '#4B5563' }}>{row.contacto}</Table.Td>

@@ -75,7 +75,7 @@ export function CatalogosPCView() {
     );
   }
 
-  if (error) {
+  if (error && proveedores.length === 0) {
     return (
       <Box p="md">
         <Alert

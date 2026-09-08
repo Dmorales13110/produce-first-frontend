@@ -66,24 +66,34 @@ interface SidebarProps {
 
 const modulesByRole = {
   admin: {
-    pf: ['GRP1', 'PF1', 'PF2', 'PF3', 'PF4', 'PF5', 'PF6', 'PFLQC', 'PFOC', 'PFMAT', 'PF7', 'PF8', 'PF10', 'PF9', 'PFBAN', 'PFNOM', 'PFCONT', 'PFREG', 'PFDASH', 'PFUSR', 'PFW1', 'PFW2', 'R07'],
+    pf: ['GRP1', 'PF1', 'PF2', 'PF3', 'PF4', 'PF5', 'PF6', 'PFLQC', 'PFOC', 'PFMAT', 'PF7', 'PF8', 'PF10', 'PF9', 'PFBAN', 'PFNOM', 'PFCONT', 'PFREG', 'PFDASH', 'PFUSR', 'PFW1'],
+    showProduceFirst: true,
     showGrower: true,
     showCooling: true,
   },
   comercial: {
-    pf: ['GRP1', 'PF1', 'PF2', 'PF3', 'PF4', 'PF5', 'PF6', 'PFLQC', 'PFOC', 'PFMAT', 'PF7', 'PF8', 'PF10', 'PF9', 'PFBAN', 'PFNOM', 'PFCONT', 'PFREG', 'PFDASH', 'PFW1'],
+    pf: [],
+    showProduceFirst: false,
     showGrower: false,
     showCooling: false,
   },
   grower: {
-    pf: ['GRP1', 'PF1', 'PF2', 'PF3', 'PF7', 'PF8', 'PFW2', 'R07'],
+    pf: [],
+    showProduceFirst: false,
     showGrower: true,
     showCooling: false,
   },
   cooling: {
-    pf: ['GRP1', 'PF1', 'PF4', 'PF5', 'PF6', 'PFLQC', 'PFOC', 'PFMAT', 'PF9', 'PFW1'],
+    pf: [],
+    showProduceFirst: false,
     showGrower: false,
     showCooling: true,
+  },
+  customer: {
+    pf: [],
+    showProduceFirst: false,
+    showGrower: false,
+    showCooling: false,
   },
 };
 
@@ -97,11 +107,12 @@ export function Sidebar({ isCollapsed, toggleMobile }: SidebarProps) {
   const [coolingOpened, setCoolingOpened] = useState(true);
   const [produceFirstOpened, setProduceFirstOpened] = useState(true);
 
-  // Obtener configuración según el rol
+  // Obtener configuración según el rol (Produce First EXCLUSIVO admin)
   const roleConfig = role ? modulesByRole[role as keyof typeof modulesByRole] : modulesByRole.admin;
   const allowedPfModules = roleConfig?.pf || [];
   const showGrower = roleConfig?.showGrower || false;
   const showCooling = roleConfig?.showCooling || false;
+  const showProduceFirst = role === 'admin';
 
   const colors = {
     textMain: '#3A3A34',
@@ -170,9 +181,10 @@ export function Sidebar({ isCollapsed, toggleMobile }: SidebarProps) {
         <Stack gap="6px">
 
           {/* ============================================================
-              MÓDULO PRODUCE FIRST - SUPER PANEL
+              MÓDULO PRODUCE FIRST - SUPER PANEL (EXCLUSIVO ADMIN)
           ============================================================ */}
-          {isCollapsed ? (
+          {showProduceFirst && (
+            isCollapsed ? (
             <Tooltip label="Produce First" position="right" withArrow>
               <NavLink
                 leftSection={<IconBuildingStore size={20} stroke={1.5} color={colors.pfText} />}
@@ -477,41 +489,19 @@ export function Sidebar({ isCollapsed, toggleMobile }: SidebarProps) {
               )}
 
               {/* PORTALES - SOLO módulos permitidos */}
-              {(isPfModuleAllowed('PFW1') || isPfModuleAllowed('PFW2') || isPfModuleAllowed('R07')) && (
+              {isPfModuleAllowed('PFW1') && (
                 <>
                   <Text size="10px" fw={700} c={colors.textMuted} pl="sm" mt="md" mb="xs" style={{ letterSpacing: '0.5px' }}>
-                    PORTALES · ACCESO EXTERNO
+                    PORTAL DE CLIENTES
                   </Text>
-                  {isPfModuleAllowed('PFW1') && (
-                    <NavLink
-                      label="PFW1 · Client Portal"
-                      leftSection={<IconWorld size={16} stroke={1.5} />}
-                      active={isPfRouteActive('/pfw1')}
-                      onClick={() => handleNavigation('/produce-first/pfw1')}
-                      styles={itemStyles(isPfRouteActive('/pfw1'))}
-                      pl="xl"
-                    />
-                  )}
-                  {isPfModuleAllowed('PFW2') && (
-                    <NavLink
-                      label="PFW2 · Portal del Productor"
-                      leftSection={<IconPlant size={16} stroke={1.5} />}
-                      active={isPfRouteActive('/pfw2')}
-                      onClick={() => handleNavigation('/produce-first/pfw2')}
-                      styles={itemStyles(isPfRouteActive('/pfw2'))}
-                      pl="xl"
-                    />
-                  )}
-                  {isPfModuleAllowed('R07') && (
-                    <NavLink
-                      label="R07 · Visitas del Agrónomo"
-                      leftSection={<IconMapPin size={16} stroke={1.5} />}
-                      active={isPfRouteActive('/r07')}
-                      onClick={() => handleNavigation('/produce-first/r07')}
-                      styles={itemStyles(isPfRouteActive('/r07'))}
-                      pl="xl"
-                    />
-                  )}
+                  <NavLink
+                    label="PFW1 · Client Portal"
+                    leftSection={<IconWorld size={16} stroke={1.5} />}
+                    active={isPfRouteActive('/pfw1')}
+                    onClick={() => handleNavigation('/produce-first/pfw1')}
+                    styles={itemStyles(isPfRouteActive('/pfw1'))}
+                    pl="xl"
+                  />
                 </>
               )}
 
@@ -546,7 +536,8 @@ export function Sidebar({ isCollapsed, toggleMobile }: SidebarProps) {
                 </>
               )}
             </NavLink>
-          )}
+          )
+        )}
 
           {/* ============================================================
               MÓDULO GROWER - Independiente (SOLO si showGrower es true)

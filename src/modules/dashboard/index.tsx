@@ -39,31 +39,31 @@ export default function MainDashboard() {
       label: 'Registrar Gasto Core',
       description: 'Captura egresos administrativos o de insumos directos',
       color: 'firstRust',
-      onClick: () => navigate('/expenses'),
+      onClick: () => navigate('/produce-first/pf9'),
     },
     {
       icon: IconScale,
       label: 'Entrada de Báscula',
       description: 'Genera boletas de recepción de cosecha en tiempo real',
       color: 'coolingBlue',
-      onClick: () => navigate('/harvest-receptions'),
+      onClick: () => navigate('/produce-cooling/reception-scan'),
     },
     {
       icon: IconShoppingCart,
       label: 'Nueva Orden de Venta',
       description: 'Registra un pedido o contrato de comercialización',
       color: 'grape',
-      onClick: () => navigate('/sales-orders'),
+      onClick: () => navigate('/produce-first/pf4'),
     },
   ];
 
   // Cuadrícula de Módulos Core del Sistema
   const modules = [
     { icon: IconRoute, label: 'Módulo Growers', path: '/grower/dashboard', color: 'growerGreen' },
-    { icon: IconScale, label: 'Recepciones Báscula', path: '/harvest-receptions', color: 'coolingBlue' },
-    { icon: IconReceiptDollar, label: 'Control de Gastos', path: '/expenses', color: 'firstRust' },
-    { icon: IconPigMoney, label: 'Anticipos Productores', path: '/advance-payments', color: 'teal' },
-    { icon: IconShoppingCart, label: 'Órdenes de Venta', path: '/sales-orders', color: 'grape' },
+    { icon: IconScale, label: 'Recepciones Báscula', path: '/produce-cooling/reception-scan', color: 'coolingBlue' },
+    { icon: IconReceiptDollar, label: 'Control de Gastos', path: '/produce-first/pf9', color: 'firstRust' },
+    { icon: IconPigMoney, label: 'Anticipos Productores', path: '/produce-first/pf7', color: 'teal' },
+    { icon: IconShoppingCart, label: 'Órdenes de Venta', path: '/produce-first/pf4', color: 'grape' },
   ];
 
   // Tips dinámicos operacionales

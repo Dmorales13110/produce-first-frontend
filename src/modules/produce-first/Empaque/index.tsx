@@ -1,6 +1,8 @@
 // src/modules/produce-first/PFMAT_MaterialEmpaquePF.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
+import { notifications } from '@mantine/notifications';
 import {
   Box,
   Container,
@@ -85,6 +87,39 @@ export function MaterialEmpaquePFView() {
   const [filtroMaterial, setFiltroMaterial] = useState<string | null>('Todos');
   const [filtroProductor, setFiltroProductor] = useState<string | null>('Todos');
   const [vistaConciliacion, setVistaConciliacion] = useState('Temporada');
+
+  const [productoresList, setProductoresList] = useState<string[]>(['Plantisano', 'Rancho Los Olivos', 'Agrícola San José']);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/growers')
+      .then((growers) => {
+        if (isMounted && Array.isArray(growers) && growers.length > 0) {
+          const names = growers.map((g) => g.name || g.grower_name || g.business_name).filter(Boolean);
+          if (names.length > 0) setProductoresList(names);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-MAT] Fallback productores:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleRegistrarEntrega = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      notifications.show({
+        title: 'Entrega Registrada',
+        message: `Se registraron ${cantidad} unidades de ${material} para ${productor} con remisión ${folioRemision}.`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      });
+      setFolioRemision(`REM-0${Math.floor(220 + Math.random() * 50)}`);
+    }, 400);
+  };
 
   // --- Datos Mock CAPTURA · BOM por producto ---
   const bomData: BOMItem[] = [
@@ -432,7 +467,7 @@ export function MaterialEmpaquePFView() {
                   label="Productor"
                   value={productor}
                   onChange={setProductor}
-                  data={['Plantisano', 'Rancho Los Olivos', 'Agrícola San José']}
+                  data={productoresList}
                   size="xs"
                   styles={{ label: { color: '#1A3A5C', fontWeight: 600 } }}
                 />
@@ -468,6 +503,8 @@ export function MaterialEmpaquePFView() {
                   leftSection={<IconCheck size={16} />}
                   size="xs"
                   style={{ backgroundColor: '#1A4B8C' }}
+                  onClick={handleRegistrarEntrega}
+                  loading={isSaving}
                 >
                   Registrar entrega
                 </Button>

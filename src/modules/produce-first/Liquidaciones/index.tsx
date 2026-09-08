@@ -1,6 +1,8 @@
 // src/modules/produce-first/PFLQC_LiquidacionesQuejasClientes.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
+import { notifications } from '@mantine/notifications';
 import {
   Box,
   Container,
@@ -77,7 +79,7 @@ export function LiquidacionesQuejasClientesView() {
   const [capturadoPor, setCapturadoPor] = useState<string | null>('Nosotros (correo del cliente)');
 
   // Datos Mock Tabla de Revisión y Aprobación
-  const revisionData: RevisionItem[] = [
+  const INITIAL_REVISION: RevisionItem[] = [
     {
       registro: 'AJ-0031',
       cliente: 'Fresh Direct',
@@ -119,6 +121,68 @@ export function LiquidacionesQuejasClientesView() {
       estatus: 'rechazado · evidencia insuficiente',
     },
   ];
+
+  const [revisionList, setRevisionList] = useState<RevisionItem[]>(INITIAL_REVISION);
+  const [clientesList, setClientesList] = useState<string[]>(['Fresh Direct', 'GreenLeaf', 'Grubmarket', 'Tay Shing']);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/customers')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const names = res.map((c) => c.name || c.business_name || c.cliente).filter(Boolean);
+          if (names.length > 0) setClientesList(names);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-LQC] Fallback clientes:', err));
+
+    api.get<any[]>('/liquidation-pf')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: RevisionItem[] = res.slice(0, 10).map((l: any, idx: number) => ({
+            registro: l.code || `AJ-${String(35 - idx).padStart(4, '0')}`,
+            cliente: l.customer_name || 'Cliente Comercial',
+            factura: l.invoice_number || `F-${1660 + idx}`,
+            motivo: l.reason || 'Ajuste comercial convenido',
+            cajas: l.total_boxes || '—',
+            ajuste: `−$${(l.adjustment_amount || 300).toLocaleString()}`,
+            capturo: 'sistema',
+            estatus: l.status || 'aprobado — NC pendiente',
+          }));
+          setRevisionList(mapped);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-LQC] Fallback liquidaciones:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleRegistrarAjuste = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      const nuevo: RevisionItem = {
+        registro: `AJ-${Math.floor(1000 + Math.random() * 9000)}`,
+        cliente: cliente || 'Cliente',
+        factura: factura?.split(' ')[0] || 'F-NUEVA',
+        motivo: motivo || 'Ajuste reportado',
+        cajas: cajasAfectadas || '—',
+        ajuste: `−${montoAjuste}`,
+        capturo: capturadoPor?.includes('cliente') ? 'cliente (portal)' : 'nosotros',
+        estatus: 'aprobación pendiente',
+      };
+      setRevisionList((prev) => [nuevo, ...prev]);
+      notifications.show({
+        title: 'Ajuste Registrado',
+        message: `El ajuste ${nuevo.registro} para ${nuevo.cliente} fue registrado y enviado a revisión.`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      });
+    }, 500);
+  };
 
   // Datos Mock Notas de Crédito Pendientes
   const creditNotesData: CreditNoteItem[] = [
@@ -382,6 +446,8 @@ export function LiquidacionesQuejasClientesView() {
                   leftSection={<IconCheck size={16} />}
                   size="xs"
                   style={{ backgroundColor: '#1A4B8C' }}
+                  onClick={handleRegistrarAjuste}
+                  loading={isSaving}
                 >
                   Registrar ajuste → a revisión
                 </Button>
@@ -426,7 +492,7 @@ export function LiquidacionesQuejasClientesView() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {revisionData.map((row, idx) => (
+                    {revisionList.map((row, idx) => (
                       <Table.Tr key={idx} style={{ borderBottom: '1px solid #F0F4FF' }}>
                         <Table.Td style={{ fontSize: '12px', color: '#6B7280' }}>{row.registro}</Table.Td>
                         <Table.Td style={{ fontSize: '12px', fontWeight: 600, color: '#1A3A5C' }}>

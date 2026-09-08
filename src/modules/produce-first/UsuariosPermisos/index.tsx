@@ -1,6 +1,9 @@
 // src/modules/produce-first/PFUSR_UsuariosPermisos.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { UsersService } from '../../../services/users';
+import { notifications } from '@mantine/notifications';
+import { IconCheck } from '@tabler/icons-react';
 import {
   Box,
   Container,
@@ -61,8 +64,8 @@ export function UsuariosPermisosView() {
   const [contacto, setContacto] = useState('');
   const [requierePin, setRequierePin] = useState<string | null>('No');
 
-  // --- Datos Mock Tabla 1: Usuarios y perfiles ---
-  const usuariosData: UsuarioItem[] = [
+  // --- Datos de Respaldo Tabla 1: Usuarios y perfiles ---
+  const INITIAL_USUARIOS: UsuarioItem[] = [
     {
       id: '1',
       usuario: 'Jose (JFNO)',
@@ -101,23 +104,113 @@ export function UsuariosPermisosView() {
     },
     {
       id: '5',
-      usuario: 'Productores (10)',
-      rol: 'Portal del Productor',
-      pantallas: 'PF-WEB2 · solo lo suyo',
-      pin: '—',
-      estado: 'externos',
-      estadoColor: 'blue',
-    },
-    {
-      id: '6',
-      usuario: 'Clientes (15)',
-      rol: 'Client Portal',
+      usuario: 'Clientes Comerciales (15)',
+      rol: 'Client Portal (customer)',
       pantallas: 'PF-WEB1 · solo lo suyo',
       pin: '—',
       estado: 'externos',
       estadoColor: 'blue',
     },
   ];
+
+  const [usuariosData, setUsuariosData] = useState<UsuarioItem[]>(INITIAL_USUARIOS);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    UsersService.getUsers()
+      .then((users) => {
+        if (isMounted && users && users.length > 0) {
+          const mapped: UsuarioItem[] = users.map((u) => ({
+            id: u.id,
+            usuario: u.full_name || u.name || u.email,
+            rol: u.role || 'Usuario',
+            pantallas: 'Estándar',
+            pin: u.pin_code ? '✓ ' + u.pin_code : '—',
+            estado: u.is_active ? 'activo' : 'inactivo',
+            estadoColor: u.is_active ? 'green' : 'gray',
+          }));
+          setUsuariosData(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn('⚠️ [PF-USR] Error al obtener usuarios, usando respaldo:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCrearUsuario = async () => {
+    if (!nombre.trim()) {
+      notifications.show({
+        title: 'Campo Requerido',
+        message: 'Por favor ingrese el nombre del usuario',
+        color: 'red',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await UsersService.createUser({
+        name: nombre,
+        full_name: nombre,
+        email: contacto.includes('@') ? contacto : `${nombre.toLowerCase().replace(/\s+/g, '.')}@producefirst.com`,
+        role: perfil || 'comercial',
+        device_type: 'computadora',
+        is_active: true,
+      });
+
+      setUsuariosData((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          usuario: nombre,
+          rol: perfil || 'Usuario',
+          pantallas: 'Asignadas por perfil',
+          pin: requierePin?.startsWith('Sí') ? '✓ 4 dígitos' : '—',
+          estado: 'activo',
+          estadoColor: 'green',
+        },
+      ]);
+
+      notifications.show({
+        title: 'Usuario Creado',
+        message: `El usuario ${nombre} ha sido registrado exitosamente.`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      });
+
+      setNombre('');
+      setContacto('');
+    } catch (err) {
+      console.warn('⚠️ [PF-USR] Fallback local al crear usuario:', err);
+      setUsuariosData((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          usuario: nombre,
+          rol: perfil || 'Usuario',
+          pantallas: 'Asignadas por perfil',
+          pin: requierePin?.startsWith('Sí') ? '✓ 4 dígitos' : '—',
+          estado: 'activo',
+          estadoColor: 'green',
+        },
+      ]);
+      notifications.show({
+        title: 'Usuario Registrado (Local)',
+        message: `El usuario ${nombre} ha sido guardado localmente.`,
+        color: 'blue',
+        icon: <IconCheck size={16} />,
+      });
+      setNombre('');
+      setContacto('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // KPI Cards
   const kpiCards: KpiCard[] = [
@@ -370,7 +463,7 @@ export function UsuariosPermisosView() {
                   size="xs"
                   value={perfil}
                   onChange={setPerfil}
-                  data={['Dirección', 'Logística', 'Pronóstico y campo', 'Lectura + Contpaqi', 'Portal del Productor', 'Client Portal']}
+                  data={['Dirección', 'Logística', 'Pronóstico y campo', 'Lectura + Contpaqi', 'Client Portal']}
                   styles={{ label: { color: '#1A3A5C', fontWeight: 600 } }}
                 />
 
@@ -400,6 +493,8 @@ export function UsuariosPermisosView() {
                   leftSection={<IconLockCheck size={16} />}
                   size="xs"
                   style={{ backgroundColor: '#1A4B8C' }}
+                  onClick={handleCrearUsuario}
+                  loading={isLoading}
                 >
                   Crear usuario e invitar
                 </Button>

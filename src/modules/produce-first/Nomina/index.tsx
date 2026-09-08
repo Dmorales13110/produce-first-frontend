@@ -1,6 +1,8 @@
 // src/modules/produce-first/PFNOM_NominaGastosOficinaPF.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { PayrollService } from '../../../services/payroll';
+import { notifications } from '@mantine/notifications';
 import {
   Box,
   Container,
@@ -59,8 +61,8 @@ export function NominaGastosOficinaPFView() {
   const [mesPago, setMesPago] = useState('noviembre');
   const [montoPago, setMontoPago] = useState('7,042');
 
-  // --- Datos Mock Tabla Principal: Plantilla de PF ---
-  const plantillaData: PlantillaItem[] = [
+  // --- Datos de Respaldo Tabla Principal: Plantilla de PF ---
+  const INITIAL_PLANTILLA: PlantillaItem[] = [
     {
       id: '1',
       persona: 'JFNO',
@@ -102,6 +104,31 @@ export function NominaGastosOficinaPFView() {
       estado: '—',
     },
   ];
+
+  const [plantillaData, setPlantillaData] = useState<PlantillaItem[]>(INITIAL_PLANTILLA);
+
+  useEffect(() => {
+    let isMounted = true;
+    PayrollService.getWorkers()
+      .then(res => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: PlantillaItem[] = res.map((w: any) => ({
+            id: String(w.id),
+            persona: w.full_name || w.name || 'Empleado',
+            rol: w.position || w.role || 'Operativo',
+            base: 'mensual',
+            mensualPlan: `$${Number(w.salary || 5000).toLocaleString()}`,
+            estado: w.status === 'active' || w.is_active ? 'activo' : 'inactivo',
+          }));
+          setPlantillaData(mapped);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando plantilla de respaldo:', err);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // KPI Cards
   const kpiCards: KpiCard[] = [

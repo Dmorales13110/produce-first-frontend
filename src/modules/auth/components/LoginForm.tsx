@@ -166,7 +166,71 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate }) => {
             {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </Button>
 
-          <Box ta="center" pt="sm">
+          {/* CREDENCIALES DE PRUEBA RÁPIDAS (QA / TEST) */}
+          <Box p="xs" style={{ backgroundColor: '#F8F9FA', borderRadius: '8px', border: '1px dashed #CED4DA' }}>
+            <Text size="11px" fw={700} c="#495057" mb={6} ta="center">
+              ⚡ ACCESO RÁPIDO PARA PRUEBAS (QA)
+            </Text>
+            <Group gap={6} justify="center">
+              <Button 
+                variant="light" 
+                color="teal" 
+                size="compact-xs"
+                onClick={() => {
+                  setEmail('admin@producefirst.com');
+                  setPassword('admin123');
+                }}
+              >
+                👑 Admin
+              </Button>
+              <Button 
+                variant="light" 
+                color="blue" 
+                size="compact-xs"
+                onClick={() => {
+                  setEmail('cliente@freshdirect.com');
+                  setPassword('cliente123');
+                }}
+              >
+                🌐 Cliente
+              </Button>
+              <Button 
+                variant="light" 
+                color="cyan" 
+                size="compact-xs"
+                onClick={() => {
+                  setEmail('comercial@producefirst.com');
+                  setPassword('comercial123');
+                }}
+              >
+                💼 Comercial
+              </Button>
+              <Button 
+                variant="light" 
+                color="indigo" 
+                size="compact-xs"
+                onClick={() => {
+                  setEmail('cooling@producefirst.com');
+                  setPassword('cooling123');
+                }}
+              >
+                ❄️ Cooling
+              </Button>
+              <Button 
+                variant="light" 
+                color="green" 
+                size="compact-xs"
+                onClick={() => {
+                  setEmail('productor@agricola.com');
+                  setPassword('productor123');
+                }}
+              >
+                🌱 Grower
+              </Button>
+            </Group>
+          </Box>
+
+          <Box ta="center" pt="xs">
             <Text size="xs" c="dimmed">
               ¿No tienes cuenta? Contacta con el administrador del sistema
             </Text>

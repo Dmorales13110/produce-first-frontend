@@ -2,159 +2,125 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { PurchaseOrderService } from '../../../../services/purchase-orders';
-
-// Definir interfaces
-interface OrdenEmbarque {
-  id: string;
-  code: string;
-  cliente: string;
-  producto: string;
-  cajas: number;
-  fecha: string;
-  status: string;
-}
-
-interface CargaItem {
-  id: number;
-  folio: string;
-  producto: string;
-  instruido: number;
-  real: number | string;
-  checked: boolean;
-}
-
-interface ProformaItem {
-  id: string;
-  folio: string;
-  producto: string;
-  instruido: number;
-  disp: number;
-  alcanza: 'ok' | 'justo' | 'insuficiente';
-}
-
-interface OrdenesEmbarqueStats {
-  bandejaHoy: number;
-  porAceptar: number;
-  enCarga: number;
-  confirmadasHoy: number;
-  cajasConfirmadas: number;
-  diferencias: number;
-  proformasPendientes: number;
-}
-
-// Datos mock para proformas y cargas mientras el backend no esté listo
-const MOCK_PROFORMAS: ProformaItem[] = [
-  { id: '1', folio: 'JAV-0508', producto: 'Bok Choy Mieu', instruido: 180, disp: 200, alcanza: 'ok' },
-  { id: '2', folio: 'JAV-0510', producto: 'Shanghai Bok', instruido: 450, disp: 430, alcanza: 'justo' },
-];
-
-const MOCK_CARGAS: CargaItem[] = [
-  { id: 1, folio: 'JAV-0508', producto: 'Bok Choy Mieu', instruido: 180, real: '', checked: false },
-  { id: 2, folio: 'JAV-0510', producto: 'Shanghai Bok', instruido: 450, real: '', checked: false },
-  { id: 3, folio: 'JAV-0512', producto: 'Coliflor', instruido: 315, real: '', checked: false },
-];
+import { ordenesEmbarqueService } from '../services/ordenesEmbarqueService';
+import type {
+  CargaItem,
+  ProformaItem,
+  OrdenEmbarque,
+  OrdenesEmbarqueStats,
+} from '../../types';
 
 export const useOrdenesEmbarque = () => {
-  const [cargas, setCargas] = useState<CargaItem[]>([]);
-  const [proformas, setProformas] = useState<ProformaItem[]>([]);
-  const [ordenes, setOrdenes] = useState<OrdenEmbarque[]>([]);
-  const [stats, setStats] = useState<OrdenesEmbarqueStats>({
-    bandejaHoy: 0,
-    porAceptar: 0,
-    enCarga: 0,
-    confirmadasHoy: 0,
-    cajasConfirmadas: 0,
-    diferencias: 0,
-    proformasPendientes: 0,
-  });
+  const [filters, setFilters] = useState({ cliente: 'Todos', estatus: 'Todas', rango: 'Semana' });
+  const [cargas, setCargas] = useState<CargaItem[]>(() => ordenesEmbarqueService.getCargas());
+  const [proformas, setProformas] = useState<ProformaItem[]>(() => ordenesEmbarqueService.getProformas());
+  const [ordenes, setOrdenes] = useState<OrdenEmbarque[]>(() => ordenesEmbarqueService.getOrdenes());
+  const [stats, setStats] = useState<OrdenesEmbarqueStats>(() => ordenesEmbarqueService.getStats());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ cliente: 'Todos', estatus: 'Todas', rango: 'Semana' });
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // 1. Obtener órdenes de compra (embarques)
-      const orders = await PurchaseOrderService.getOrders({
-        status: filters.estatus === 'Todas' ? undefined : filters.estatus,
-      });
+      // 1. Obtener órdenes de compra (embarques) del backend
+      const orders = await PurchaseOrderService.getOrders();
 
-      // Mapear a OrdenEmbarque
-      const ordenesData: OrdenEmbarque[] = orders.map(o => ({
-        id: o.id,
-        code: o.code,
-        cliente: o.proveedor || 'N/A',
-        producto: o.items?.[0]?.concept || 'N/A',
-        cajas: Math.round(o.items?.[0]?.quantity || 0),
-        fecha: o.entrega_requerida || o.created_at,
-        status: o.status || 'draft',
-      }));
-      setOrdenes(ordenesData);
+      if (orders && orders.length > 0) {
+        // Mapear a OrdenEmbarque del módulo produce-cooling
+        const mappedOrdenes: OrdenEmbarque[] = orders.map(o => {
+          let estatus = 'por aceptar';
+          let color = 'blue';
+          let aceptada = '—';
+          let confirmada = '—';
 
-      // 2. Establecer datos mock para proformas y cargas (mientras el backend no esté listo)
-      setProformas(MOCK_PROFORMAS);
-      setCargas(MOCK_CARGAS);
+          if (o.status === 'authorized') {
+            estatus = 'por aceptar';
+            aceptada = '✓';
+            color = 'blue';
+          } else if (o.status === 'received') {
+            estatus = 'cargando';
+            aceptada = '✓';
+            confirmada = 'en carga';
+            color = 'amber';
+          } else if (o.status === 'invoiced') {
+            estatus = 'confirmada';
+            aceptada = '✓';
+            confirmada = '✓';
+            color = 'teal';
+          }
 
-      // 3. Calcular estadísticas
-      setStats({
-        bandejaHoy: orders.filter(o => o.status === 'draft').length,
-        porAceptar: orders.filter(o => o.status === 'authorized').length,
-        enCarga: orders.filter(o => o.status === 'received').length,
-        confirmadasHoy: orders.filter(o => o.status === 'invoiced').length,
-        cajasConfirmadas: orders.reduce((sum, o) => sum + (o.items?.[0]?.quantity || 0), 0),
-        diferencias: 0,
-        proformasPendientes: orders.filter(o => o.status === 'draft').length,
-      });
+          const cajasTotal = o.items?.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0) || 0;
 
+          return {
+            proforma: o.code || 'PRF-N/A',
+            cliente: o.proveedor || 'Cliente General',
+            salida: o.entrega_requerida ? new Date(o.entrega_requerida).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '—',
+            cajas: cajasTotal.toLocaleString(),
+            aceptada,
+            confirmada,
+            estatus,
+            color,
+          };
+        });
+
+        // Filtrar según filtros seleccionados
+        let filtered = mappedOrdenes;
+        if (filters.cliente && filters.cliente !== 'Todos') {
+          filtered = filtered.filter(o => o.cliente === filters.cliente);
+        }
+        if (filters.estatus && filters.estatus !== 'Todas') {
+          filtered = filtered.filter(o => o.estatus === filters.estatus);
+        }
+
+        setOrdenes(filtered.length > 0 ? filtered : ordenesEmbarqueService.getOrdenes(filters));
+      } else {
+        setOrdenes(ordenesEmbarqueService.getOrdenes(filters));
+      }
+
+      setCargas(ordenesEmbarqueService.getCargas());
+      setProformas(ordenesEmbarqueService.getProformas());
+      setStats(ordenesEmbarqueService.getStats());
     } catch (err) {
-      console.error('❌ [useOrdenesEmbarque] Error:', err);
-      setError(err instanceof Error ? err.message : 'Error al cargar datos');
-      
-      // ✅ En caso de error, usar datos mock
-      setProformas(MOCK_PROFORMAS);
-      setCargas(MOCK_CARGAS);
+      console.warn('⚠️ [useOrdenesEmbarque] Backend no disponible, usando mock:', err);
+      setOrdenes(ordenesEmbarqueService.getOrdenes(filters));
+      setCargas(ordenesEmbarqueService.getCargas());
+      setProformas(ordenesEmbarqueService.getProformas());
+      setStats(ordenesEmbarqueService.getStats());
     } finally {
       setIsLoading(false);
     }
   }, [filters]);
 
-  // ✅ Funciones para manejar cargas
+  // Manejar cargas
   const toggleCarga = useCallback((id: number) => {
-    setCargas(prev => prev.map(c => 
-      c.id === id ? { ...c, checked: !c.checked } : c
-    ));
+    const updated = ordenesEmbarqueService.toggleCarga(id);
+    if (updated) {
+      setCargas(ordenesEmbarqueService.getCargas());
+    }
   }, []);
 
   const updateCarga = useCallback((id: number, value: number | string) => {
-    setCargas(prev => prev.map(c => 
-      c.id === id ? { ...c, real: value } : c
-    ));
+    const updated = ordenesEmbarqueService.updateCarga(id, { real: value });
+    if (updated) {
+      setCargas(ordenesEmbarqueService.getCargas());
+    }
   }, []);
 
-  // ✅ Funciones para aceptar proforma y confirmar carga
+  // Acciones
   const aceptarProforma = useCallback(async () => {
-    // Simular llamada al backend
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Marcar proformas como aceptadas
-    setProformas([]);
-    
-    return { success: true, message: 'Proforma aceptada correctamente' };
+    const res = ordenesEmbarqueService.aceptarProforma();
+    setProformas(ordenesEmbarqueService.getProformas());
+    return res;
   }, []);
 
   const confirmarCarga = useCallback(async (data: any) => {
-    // Simular llamada al backend
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Resetear cargas
-    setCargas(prev => prev.map(c => ({ ...c, checked: false, real: '' })));
-    
-    return { success: true, message: 'Carga confirmada correctamente' };
+    const res = ordenesEmbarqueService.confirmarCarga(data);
+    setCargas(ordenesEmbarqueService.getCargas());
+    return res;
   }, []);
 
-  // Cargar datos iniciales
   useEffect(() => {
     loadData();
   }, [loadData]);

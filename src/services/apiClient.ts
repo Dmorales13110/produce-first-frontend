@@ -122,32 +122,12 @@ export const apiClient = async <T = any>(
         const currentToken = storage.getItem('produce_first_token');
         let { response, responseText, responseData, parseError } = await executeRequest(currentToken || undefined);
 
-        if (parseError) {
-            console.error('❌ Error parseando respuesta JSON:', {
-                endpoint,
-                status: response.status,
-                responseText: responseText.substring(0, 200),
-                parseError: parseError
-            });
-
-            throw new ApiError({
-                status: response.status,
-                statusText: response.statusText,
-                endpoint,
-                method: options.method || 'GET',
-                requestBody: options.body,
-                responseBody: { raw: responseText.substring(0, 500) },
-                message: `Error parseando respuesta: ${parseError}`
-            });
-        }
-
-        // Manejo de 401 - Token expirado
+        // Manejo prioritario de 401 - Token no autorizado, expirado o revocado
         if (response.status === 401 && !options.skipAuth) {
             const isLoginEndpoint = endpoint === '/auth/login' || endpoint === '/auth/signin';
             
             if (isLoginEndpoint) {
                 console.log('❌ Login falló con 401 - Credenciales incorrectas');
-                
                 storage.removeItem('produce_first_token');
                 storage.removeItem('produce_first_refresh_token');
                 
@@ -162,13 +142,24 @@ export const apiClient = async <T = any>(
                 });
             }
 
-            console.log('🔑 Token expirado, intentando refrescar...');
+            console.warn('🔒 [apiClient] 401 Unauthorized detectado en:', endpoint);
 
+            // Si hay un proceso de refresco activo, esperar
             if (isRefreshing) {
                 console.log('⏳ Refresh en progreso, esperando...');
                 return new Promise((resolve, reject) => {
                     subscribeToRefresh(async (newToken) => {
                         try {
+                            if (!newToken) {
+                                reject(new ApiError({
+                                    status: 401,
+                                    statusText: 'Unauthorized',
+                                    endpoint,
+                                    method: options.method || 'GET',
+                                    message: 'Sesión expirada'
+                                }));
+                                return;
+                            }
                             const retryResult = await executeRequest(newToken);
                             if (!retryResult.response.ok) {
                                 reject(new ApiError({
@@ -199,7 +190,7 @@ export const apiClient = async <T = any>(
                     throw new Error('No refresh token available');
                 }
 
-                console.log('🔄 Refrescando token...');
+                console.log('🔄 Intentando refrescar token...');
 
                 const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
                     method: 'POST',
@@ -210,17 +201,7 @@ export const apiClient = async <T = any>(
                 const refreshData = await refreshResponse.json();
 
                 if (!refreshResponse.ok) {
-                    console.log('❌ Refresh token falló:', { status: refreshResponse.status, data: refreshData });
-
-                    storage.removeItem('produce_first_token');
-                    storage.removeItem('produce_first_refresh_token');
-
-                    onRefreshed('');
-                    isRefreshing = false;
-
-                    // Redirigir al login
-                    window.location.href = '/login';
-                    throw new Error('Sesión expirada. Por favor, inicia sesión de nuevo.');
+                    throw new Error('Refresh token inválido o expirado');
                 }
 
                 const newAccessToken = refreshData.data?.accessToken || refreshData.accessToken;
@@ -256,19 +237,34 @@ export const apiClient = async <T = any>(
                 return retryResult.responseData as T;
 
             } catch (refreshError) {
-                console.error('❌ Error refreshing token:', refreshError);
+                console.warn('🔒 [apiClient] Sesión expirada o no autorizada. Limpiando credenciales...');
                 isRefreshing = false;
-                refreshSubscribers = [];
+                onRefreshed('');
 
                 storage.removeItem('produce_first_token');
                 storage.removeItem('produce_first_refresh_token');
+                storage.removeItem('produce_first_user');
 
-                window.location.href = '/login';
-                throw refreshError;
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('auth:unauthorized'));
+                    if (window.location.pathname !== '/login') {
+                        window.location.replace('/login');
+                    }
+                }
+
+                throw new ApiError({
+                    status: 401,
+                    statusText: 'Unauthorized',
+                    endpoint,
+                    method: options.method || 'GET',
+                    message: 'Sesión expirada o no autorizada. Redirigiendo a inicio de sesión...'
+                });
             }
         }
 
+        // Si la respuesta HTTP no es exitosa (404, 500, etc.), priorizar el error de estado HTTP
         if (!response.ok) {
+            const errorMsg = responseData?.message || responseData?.error || (response.status === 404 ? `Recurso no encontrado (404): ${endpoint}` : `Error del servidor (${response.status})`);
             throw new ApiError({
                 status: response.status,
                 statusText: response.statusText,
@@ -276,7 +272,7 @@ export const apiClient = async <T = any>(
                 method: options.method || 'GET',
                 requestBody: options.body,
                 responseBody: responseData,
-                message: responseData?.message || responseData?.error || `Error ${response.status}`
+                message: errorMsg
             });
         }
 

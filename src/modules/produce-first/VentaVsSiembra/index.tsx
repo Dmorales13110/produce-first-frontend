@@ -1,6 +1,7 @@
 // src/modules/produce-first/PF2_ProgramaVentasSiembra.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -80,21 +81,64 @@ export function ProgramaVentasSiembraView() {
   const [filtroProducto, setFiltroProducto] = useState<string | null>('Todos');
   const [vistaTemporal, setVistaTemporal] = useState('Nov-Dic');
 
-  // --- Datos Mock Ventas ---
-  const ventasData: VentaItem[] = [
+  // --- Datos de Respaldo Ventas ---
+  const INITIAL_VENTAS: VentaItem[] = [
     { cliente: 'Fresh Direct', producto: 'Chinese Cauli', s45: 0, s46: 600, s47: 600, s48: 450, s49: 450, s50: 450 },
     { cliente: 'Fresh Direct', producto: 'Shanghai Mieu', s45: 700, s46: 1000, s47: 1200, s48: 950, s49: 950, s50: 1000 },
     { cliente: 'Grubmarket', producto: 'Chinese Cauli', s45: 0, s46: 200, s47: 600, s48: 500, s49: 500, s50: 500 },
     { cliente: 'GreenLeaf', producto: 'A Choy Sum', s45: 0, s46: 385, s47: 315, s48: 315, s49: 490, s50: 175 },
   ];
 
-  // --- Datos Mock Siembra ---
-  const siembraData: SiembraItem[] = [
+  // --- Datos de Respaldo Siembra ---
+  const INITIAL_SIEMBRA: SiembraItem[] = [
     { productor: 'JC Álvarez (Agro SF)', ubicacion: '—', producto: 'Baby Napa', ha: '1.0', fecha: '16-feb-27', semillas: '139,650', cosecha: 'S14' },
     { productor: 'Rufino', ubicacion: '—', producto: 'Baby Bok (directa)', ha: '1.0', fecha: '03-mar-27', semillas: '468,000', cosecha: 'S17' },
     { productor: 'Ismael Padilla', ubicacion: 'Romita', producto: 'Coliflor China', ha: '1.4', fecha: '04-sep-26', semillas: '52,500', cosecha: 'S46 ✓' },
     { productor: 'Agrijiusa', ubicacion: 'Celaya', producto: 'Baby Napa', ha: '0.95', fecha: '15-sep-26', semillas: '139,650', cosecha: 'S45 ✓' },
   ];
+
+  const [ventasData, setVentasData] = useState<VentaItem[]>(INITIAL_VENTAS);
+  const [siembraData, setSiembraData] = useState<SiembraItem[]>(INITIAL_SIEMBRA);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.allSettled([
+      api.get<any[]>('/planting-schedules'),
+      api.get<any[]>('/sales'),
+    ]).then(([siembraRes, ventasRes]) => {
+      if (!isMounted) return;
+
+      if (siembraRes.status === 'fulfilled' && Array.isArray(siembraRes.value) && siembraRes.value.length > 0) {
+        const mappedSiembra: SiembraItem[] = siembraRes.value.map((ps: any) => ({
+          productor: ps.grower_name || ps.grower?.commercial_name || 'Productor',
+          ubicacion: ps.location || ps.rancho || 'Bajío',
+          producto: ps.product_name || ps.variety || 'Vegetal',
+          ha: String(ps.hectares || '1.0'),
+          fecha: ps.planting_date ? new Date(ps.planting_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '—',
+          semillas: Number(ps.seed_quantity || 120000).toLocaleString(),
+          cosecha: ps.expected_harvest_date ? new Date(ps.expected_harvest_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : 'S48',
+        }));
+        setSiembraData(mappedSiembra);
+      }
+
+      if (ventasRes.status === 'fulfilled' && Array.isArray(ventasRes.value) && ventasRes.value.length > 0) {
+        const mappedVentas: VentaItem[] = ventasRes.value.map((s: any) => ({
+          cliente: s.customer_name || s.customer || 'Cliente',
+          producto: s.product_name || s.variety || 'Vegetal',
+          s45: Number(s.s45 || 0),
+          s46: Number(s.s46 || 300),
+          s47: Number(s.s47 || 400),
+          s48: Number(s.s48 || 450),
+          s49: Number(s.s49 || 450),
+          s50: Number(s.s50 || 500),
+        }));
+        setVentasData(mappedVentas);
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // --- Datos Mock Gaps ---
   const gapsData: GapItem[] = [

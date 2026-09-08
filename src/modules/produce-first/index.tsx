@@ -64,7 +64,7 @@ import { UsuariosPermisosView } from './UsuariosPermisos';
 // ============================================================
 // MÓDULOS DE PRODUCE FIRST - PORTALES
 // ============================================================
-// (Placeholders por ahora - se implementarán más adelante)
+import { PortalClientesView } from './PortalClientes';
 
 // ============================================================
 // PLACEHOLDERS PARA MÓDULOS EN DESARROLLO
@@ -333,7 +333,7 @@ const ProduceFirstModule: React.FC = () => {
       />
 
       {/* ============================================================
-          PORTALES · ACCESO EXTERNO
+          PORTAL DE CLIENTES · PF-WEB1
       ============================================================ */}
       
       {/* PFW1 · Client Portal */}
@@ -341,27 +341,17 @@ const ProduceFirstModule: React.FC = () => {
         path="pfw1" 
         element={
           <ProduceFirstLayout>
-            <PlaceholderModule title="PFW1 · Client Portal" code="PFW1" />
+            <PortalClientesView />
           </ProduceFirstLayout>
         } 
       />
       
-      {/* PFW2 · Portal del Productor */}
+      {/* Alias de acceso directo */}
       <Route 
-        path="pfw2" 
+        path="portal-clientes" 
         element={
           <ProduceFirstLayout>
-            <PlaceholderModule title="PFW2 · Portal del Productor" code="PFW2" />
-          </ProduceFirstLayout>
-        } 
-      />
-      
-      {/* R07 · Visitas del Agrónomo */}
-      <Route 
-        path="r07" 
-        element={
-          <ProduceFirstLayout>
-            <PlaceholderModule title="R07 · Visitas del Agrónomo" code="R07" />
+            <PortalClientesView />
           </ProduceFirstLayout>
         } 
       />

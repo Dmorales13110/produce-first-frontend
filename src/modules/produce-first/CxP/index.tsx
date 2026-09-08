@@ -1,6 +1,7 @@
 // src/modules/produce-first/PF9_CxPProduceFirst.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { AccountsPayableService } from '../../../services/accounts-payable';
 import {
   Box,
   Container,
@@ -101,8 +102,8 @@ export function CxPProduceFirstView() {
     { id: 'sat-2', factura: 'F-0448', proveedor: 'Fletes GTO Norte', concepto: 'Flete Celaya–McAllen', monto: '$38,500', categoria: 'FLETES', trasladable: true, conciliado: true },
   ];
 
-  // --- Datos Mock Sección 3: Lista Maestra ---
-  const listaMaestraData: ListaMaestraItem[] = [
+  // --- Datos de Respaldo Sección 3: Lista Maestra ---
+  const INITIAL_LISTA_MAESTRA: ListaMaestraItem[] = [
     {
       id: '1',
       fecha: '13-nov',
@@ -120,50 +121,53 @@ export function CxPProduceFirstView() {
     },
     {
       id: '2',
-      fecha: '18-nov',
+      fecha: '15-nov',
       proveedor: 'Produce Cooling',
-      concepto: 'Maquila nov (interco.)',
-      divisaTc: 'MXN',
+      concepto: 'Maquila de enfriamiento',
+      divisaTc: 'MXN $297,652',
       totalMXN: '$297,652',
       saldo: '$297,652',
       credito: '30d',
-      vence: '18-dic',
+      vence: '15-dic',
       fPago: '',
-      origen: 'SAT ✓',
+      origen: 'SAT · CFDI',
       estatus: 'por pagar',
       colorEstatus: 'blue',
     },
-    {
-      id: '3',
-      fecha: '11-nov',
-      proveedor: 'Keystone Cold',
-      concepto: 'Freight pick up',
-      divisaTc: 'USD $100 · 18.00',
-      totalMXN: '$1,800',
-      saldo: '$0',
-      credito: '0d',
-      vence: '11-nov',
-      fPago: '11-nov',
-      origen: 'extranjera · manual',
-      estatus: 'pagada',
-      colorEstatus: 'gray',
-    },
-    {
-      id: '4',
-      fecha: '10-nov',
-      proveedor: 'J.P. Pacheco',
-      concepto: 'Gastos aduanales',
-      divisaTc: 'USD $283 · 18.24',
-      totalMXN: '$5,161',
-      saldo: '$0',
-      credito: '30d',
-      vence: '10-dic',
-      fPago: '28-nov',
-      origen: 'SAT ✓',
-      estatus: 'pagada',
-      colorEstatus: 'gray',
-    },
   ];
+
+  const [listaMaestraData, setListaMaestraData] = useState<ListaMaestraItem[]>(INITIAL_LISTA_MAESTRA);
+
+  useEffect(() => {
+    let isMounted = true;
+    AccountsPayableService.getInvoices()
+      .then(res => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: ListaMaestraItem[] = res.map((inv: any, idx: number) => ({
+            id: String(inv.id || idx + 1),
+            fecha: inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '15-nov',
+            proveedor: inv.supplier_name || inv.vendor || 'Proveedor General',
+            concepto: inv.concept || inv.notes || 'Insumos y servicios',
+            divisaTc: `${inv.currency || 'USD'} $${Number(inv.total_amount || 1000).toLocaleString()}`,
+            totalMXN: `$${Number(inv.total_amount_mxn || (Number(inv.total_amount || 1000) * 19.5)).toLocaleString()}`,
+            saldo: `$${Number(inv.pending_amount || inv.total_amount || 1000).toLocaleString()}`,
+            credito: `${inv.credit_days || 15}d`,
+            vence: inv.due_date ? new Date(inv.due_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '30-nov',
+            fPago: inv.payment_date ? new Date(inv.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '',
+            origen: inv.sat_uuid ? 'SAT · CFDI' : 'manual',
+            estatus: inv.status === 'paid' ? 'pagada' : 'por pagar',
+            colorEstatus: inv.status === 'paid' ? 'teal' : 'blue',
+          }));
+          setListaMaestraData(mapped);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando facturas CxP de respaldo:', err);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
+
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

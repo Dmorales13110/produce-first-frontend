@@ -15,6 +15,7 @@ const MainDashboard = React.lazy(() => import('./modules/dashboard/index'));
 const GrowerDashboard = React.lazy(() => import('./modules/grower'));
 const ProduceCoolingModule = React.lazy(() => import('./modules/produce-cooling'));
 const ProduceFirstModule = React.lazy(() => import('./modules/produce-first'));
+const PortalClientesView = React.lazy(() => import('./modules/produce-first/PortalClientes/index').then(m => ({ default: m.PortalClientesView })));
 
 const theme = createTheme({
   primaryColor: 'growerGreen',
@@ -82,42 +83,67 @@ export default function App() {
                     </MainLayout>
                   }
                 />
-                
-                {/* ✅ GROWER - Ruta simple y directa */}
-                <Route
-                  path="/grower/*"
-                  element={
-                    <MainLayout>
-                      <Suspense fallback={<PageLoader />}>
-                        <GrowerDashboard />
-                      </Suspense>
-                    </MainLayout>
-                  }
-                />
-                
-                {/* ✅ PRODUCE COOLING - Ruta simple y directa */}
-                <Route
-                  path="/produce-cooling/*"
-                  element={
-                    <MainLayout>
-                      <Suspense fallback={<PageLoader />}>
-                        <ProduceCoolingModule />
-                      </Suspense>
-                    </MainLayout>
-                  }
-                />
 
-                {/* ✅ PRODUCE FIRST - Super Panel */}
-                <Route
-                  path="/produce-first/*"
-                  element={
-                    <MainLayout>
-                      <Suspense fallback={<PageLoader />}>
-                        <ProduceFirstModule />
-                      </Suspense>
-                    </MainLayout>
-                  }
-                />
+                {/* Redirecciones de conveniencia y compatibilidad */}
+                <Route path="/harvest-receptions" element={<Navigate to="/produce-cooling/reception-scan" replace />} />
+                <Route path="/expenses" element={<Navigate to="/produce-first/pf9" replace />} />
+                <Route path="/sales-orders" element={<Navigate to="/produce-first/pf4" replace />} />
+                <Route path="/advance-payments" element={<Navigate to="/produce-first/pf7" replace />} />
+                {/* ✅ PORTAL CLIENTES - Protegido para admin y customer */}
+                <Route element={<ProtectedRoute allowedRoles={['admin', 'customer']} />}>
+                  <Route
+                    path="/portal-clientes"
+                    element={
+                      <MainLayout>
+                        <Suspense fallback={<PageLoader />}>
+                          <PortalClientesView />
+                        </Suspense>
+                      </MainLayout>
+                    }
+                  />
+                </Route>
+                
+                {/* ✅ GROWER - Protegido para admin y grower */}
+                <Route element={<ProtectedRoute allowedRoles={['admin', 'grower']} />}>
+                  <Route
+                    path="/grower/*"
+                    element={
+                      <MainLayout>
+                        <Suspense fallback={<PageLoader />}>
+                          <GrowerDashboard />
+                        </Suspense>
+                      </MainLayout>
+                    }
+                  />
+                </Route>
+                
+                {/* ✅ PRODUCE COOLING - Protegido para admin y cooling */}
+                <Route element={<ProtectedRoute allowedRoles={['admin', 'cooling']} />}>
+                  <Route
+                    path="/produce-cooling/*"
+                    element={
+                      <MainLayout>
+                        <Suspense fallback={<PageLoader />}>
+                          <ProduceCoolingModule />
+                        </Suspense>
+                      </MainLayout>
+                    }
+                  />
+                </Route>
+
+                {/* ✅ PRODUCE FIRST - Protegido EXCLUSIVAMENTE para admin */}
+                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route
+                    path="/produce-first/*"
+                    element={
+                      <MainLayout>
+                        <Suspense fallback={<PageLoader />}>
+                          <ProduceFirstModule />
+                        </Suspense>
+                      </MainLayout>
+                    }
+                  />
+                </Route>
               </Route>
 
               {/* 404 */}

@@ -1,6 +1,7 @@
 // src/modules/produce-first/PFDASH_DashboardProduceFirst.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -92,6 +93,34 @@ export function DashboardProduceFirstView() {
   const [categoriaCostos, setCategoriaCostos] = useState<string | null>('Todas');
   const [proveedorCostos, setProveedorCostos] = useState<string | null>('Todos');
   const [rangoCostos, setRangoCostos] = useState<'Mes' | 'Temporada'>('Mes');
+
+  const [clientesList, setClientesList] = useState<string[]>(['Todos', 'Fresh Direct', 'Grubmarket', 'Greenleaf', 'Manley', 'Lucky Taro']);
+  const [productoresList, setProductoresList] = useState<string[]>(['Todos', 'Daily Veggies', 'EFW', 'Fernando García']);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/customers')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const names = res.map((c) => c.name || c.business_name || c.cliente).filter(Boolean);
+          if (names.length > 0) setClientesList(['Todos', ...names]);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-DASH] Fallback clientes:', err));
+
+    api.get<any[]>('/growers')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const names = res.map((g) => g.name || g.grower_name || g.business_name).filter(Boolean);
+          if (names.length > 0) setProductoresList(['Todos', ...names]);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-DASH] Fallback productores:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // --- Datos Mock Matriz Retorno Promedio ---
   const retornoMatrizData: RetornoMatrizItem[] = [
@@ -514,7 +543,7 @@ export function DashboardProduceFirstView() {
                   size="xs"
                   value={clienteFilter}
                   onChange={setClienteFilter}
-                  data={['Todos', 'Fresh Direct', 'Grubmarket', 'Greenleaf', 'Manley', 'Lucky Taro']}
+                  data={clientesList}
                   w={130}
                   styles={{ label: { color: '#1A3A5C', fontWeight: 600 } }}
                 />
@@ -523,7 +552,7 @@ export function DashboardProduceFirstView() {
                   size="xs"
                   value={productorFilter}
                   onChange={setProductorFilter}
-                  data={['Todos', 'Daily Veggies', 'EFW', 'Fernando García']}
+                  data={productoresList}
                   w={130}
                   styles={{ label: { color: '#1A3A5C', fontWeight: 600 } }}
                 />

@@ -1,6 +1,7 @@
 // src/modules/produce-first/PFREG_RegistroLiquidaciones.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -85,7 +86,7 @@ export function RegistroLiquidacionesView() {
   const [tabFiltro, setTabFiltro] = useState('Todas');
 
   // --- Datos Mock Tabla 1: Registro Detallado ---
-  const registroDetalleData: RegistroDetalleItem[] = [
+  const INITIAL_REGISTRO_DETALLE: RegistroDetalleItem[] = [
     {
       cam: '1',
       fecha: '24-oct',
@@ -189,6 +190,60 @@ export function RegistroLiquidacionesView() {
       exp: '...',
     },
   ];
+
+  const [registroDetalleList, setRegistroDetalleList] = useState<RegistroDetalleItem[]>(INITIAL_REGISTRO_DETALLE);
+  const [clientesList, setClientesList] = useState<string[]>(['Todos', 'Fresh Direct', 'Grubmarket', 'Fortune Growers', 'Greenleaf']);
+  const [productoresList, setProductoresList] = useState<string[]>(['Todos', 'Daily Veggies', 'EFW', 'Fernando García']);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/customers')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const names = res.map((c) => c.name || c.business_name || c.cliente).filter(Boolean);
+          if (names.length > 0) setClientesList(['Todos', ...names]);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-REG] Fallback clientes:', err));
+
+    api.get<any[]>('/growers')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const names = res.map((g) => g.name || g.grower_name || g.business_name).filter(Boolean);
+          if (names.length > 0) setProductoresList(['Todos', ...names]);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-REG] Fallback productores:', err));
+
+    api.get<any[]>('/liquidation-pf')
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: RegistroDetalleItem[] = res.slice(0, 15).map((l: any, idx: number) => ({
+            cam: String(l.truck_number || idx + 1),
+            fecha: l.date ? new Date(l.date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : 'Reciente',
+            fact: l.invoice_number || `16${30 + idx}`,
+            cliente: l.customer_name || 'Cliente Comercial',
+            tipo: l.type || 'Comisión',
+            productor: l.grower_name || 'Productor',
+            vegetal: l.product_name || 'Hortaliza',
+            cajas: l.boxes || 500,
+            precioCj: `$${(l.price_per_box || 14).toFixed(2)}`,
+            venta: `$${(l.total_sale || 7000).toLocaleString()}`,
+            comision: `$${(l.commission || 700).toFixed(2)}`,
+            fitoDer: `$${(l.fito || 45).toFixed(2)}`,
+            enfrRee: `$${(l.cooling || 450).toFixed(2)}`,
+            transp: `$${(l.freight || 750).toFixed(2)}`,
+            exp: `$${(l.export_fee || 195).toFixed(2)}`,
+          }));
+          setRegistroDetalleList(mapped);
+        }
+      })
+      .catch((err) => console.warn('⚠️ [PF-REG] Fallback liquidaciones detalle:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // --- Datos Mock Tabla 2: Utilidad por Camión ---
   const resumenCamionData: ResumenCamionItem[] = [
@@ -422,7 +477,7 @@ export function RegistroLiquidacionesView() {
                     El Registro · Renglón por Camión × Producto
                   </Text>
                   <Badge size="xs" color="blue" variant="light" radius="sm">
-                    {registroDetalleData.length} renglones
+                    {registroDetalleList.length} renglones
                   </Badge>
                 </Group>
               </Group>
@@ -437,7 +492,7 @@ export function RegistroLiquidacionesView() {
                     size="xs"
                     value={clienteFilter}
                     onChange={setClienteFilter}
-                    data={['Todos', 'Fresh Direct', 'Grubmarket', 'Fortune Growers', 'Greenleaf']}
+                    data={clientesList}
                     w={120}
                     styles={{ label: { color: '#1A3A5C', fontWeight: 600 } }}
                   />
@@ -446,7 +501,7 @@ export function RegistroLiquidacionesView() {
                     size="xs"
                     value={productorFilter}
                     onChange={setProductorFilter}
-                    data={['Todos', 'Daily Veggies', 'EFW', 'Fernando García']}
+                    data={productoresList}
                     w={120}
                     styles={{ label: { color: '#1A3A5C', fontWeight: 600 } }}
                   />
@@ -512,7 +567,7 @@ export function RegistroLiquidacionesView() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {registroDetalleData.map((row, idx) => (
+                    {registroDetalleList.map((row, idx) => (
                       <Table.Tr key={idx} style={{ borderBottom: '1px solid #F0F4FF' }}>
                         <Table.Td style={{ fontSize: '11px', fontWeight: 600, color: '#1A3A5C' }}>
                           {row.cam}

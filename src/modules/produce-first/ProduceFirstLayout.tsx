@@ -1,6 +1,5 @@
-// src/modules/produce-first/ProduceFirstLayout.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { SubmoduleLoader } from '../../components/SubmoduleLoader';
 import {
   Box,
   Container,
@@ -200,7 +199,9 @@ export function ProduceFirstLayout({ children }: ProduceFirstLayoutProps) {
 
           {tabs.map((tab) => (
             <Tabs.Panel key={tab.id} value={tab.id} pt="md">
-              {children}
+              <Suspense fallback={<SubmoduleLoader message="Cargando datos de Produce First..." />}>
+                {children}
+              </Suspense>
             </Tabs.Panel>
           ))}
         </Tabs>

@@ -1,6 +1,7 @@
 // src/modules/produce-first/PF6_CxCClientes.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { AccountsReceivableService } from '../../../services/accounts-receivable';
 import {
   Box,
   Container,
@@ -71,8 +72,8 @@ export function CxCClientesView() {
   const [selectedRows, setSelectedRows] = useState<number[]>([1]);
   const [fechaCobro, setFechaCobro] = useState('28-nov-2026');
 
-  // Datos Mock Lista Maestra Facturas
-  const facturasData: FacturaItem[] = [
+  // Datos de Respaldo Lista Maestra Facturas
+  const INITIAL_FACTURAS: FacturaItem[] = [
     {
       id: 0,
       fFactura: '12-nov',
@@ -115,21 +116,39 @@ export function CxCClientesView() {
       estatus: 'por cobrar',
       colorBadge: 'blue',
     },
-    {
-      id: 3,
-      fFactura: '15-nov',
-      cliente: 'Fresh Direct',
-      factura: 'F-1660',
-      cajas: 180,
-      totalUsd: '$3,600',
-      cobrado: '$3,600',
-      saldo: '$0',
-      vence: '30-nov',
-      fCobro: '26-nov',
-      estatus: 'cobrada',
-      colorBadge: 'gray',
-    },
   ];
+
+  const [facturasData, setFacturasData] = useState<FacturaItem[]>(INITIAL_FACTURAS);
+
+  useEffect(() => {
+    let isMounted = true;
+    AccountsReceivableService.getInvoices()
+      .then(res => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: FacturaItem[] = res.map((inv: any, idx: number) => ({
+            id: idx,
+            fFactura: inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '18-nov',
+            cliente: inv.customer_name || inv.client || 'Cliente',
+            factura: inv.invoice_number || `F-${1660 + idx}`,
+            cajas: Number(inv.total_boxes || inv.quantity || 450),
+            totalUsd: `$${Number(inv.total_amount || 7677).toLocaleString()}`,
+            cobrado: `$${Number(inv.paid_amount || 0).toLocaleString()}`,
+            saldo: `$${(Number(inv.total_amount || 7677) - Number(inv.paid_amount || 0)).toLocaleString()}`,
+            vence: inv.due_date ? new Date(inv.due_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '03-dic',
+            fCobro: inv.payment_date ? new Date(inv.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '',
+            estatus: inv.status === 'paid' ? 'cobrada' : (inv.status === 'overdue' ? 'vencida' : 'por cobrar'),
+            colorBadge: inv.status === 'paid' ? 'green' : (inv.status === 'overdue' ? 'red' : 'blue'),
+          }));
+          setFacturasData(mapped);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando facturas de respaldo:', err);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
+
 
   const toggleRow = (id: number) => {
     setSelectedRows((current) =>

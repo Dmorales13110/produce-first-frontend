@@ -1,6 +1,7 @@
 // src/modules/produce-first/PF3_PronosticoSemanal.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
 import {
   Box,
   Container,
@@ -67,14 +68,42 @@ export function PronosticoSemanalView() {
   const [filtroDia, setFiltroDia] = useState<string | null>('Semana completa');
   const [semanaActiva, setSemanaActiva] = useState('S49');
 
-  // Datos mock de la tabla de pronóstico por productor
-  const pronosticoData: PronosticoItem[] = [
+  // Datos de respaldo de la tabla de pronóstico por productor
+  const INITIAL_PRONOSTICO: PronosticoItem[] = [
     { productor: 'Daily Veggies', producto: 'Shanghai Bok', lun: '20/45', mar: '18/45', mie: '20/45', jue: '16/45', vie: '22/45', sab: '14/45', total: 110 },
     { productor: 'Daily Veggies', producto: 'Choy Mieu', lun: '13/45', mar: '10/45', mie: '12/45', jue: '10/45', vie: '14/45', sab: '8/45', total: 67 },
     { productor: 'Agrícola JAV', producto: 'Big Bok Choy', lun: '24/35', mar: '', mie: '', jue: '20/35', vie: '', sab: '', total: 44 },
     { productor: 'Daniel Zermeño', producto: 'Coliflor', lun: '28/35', mar: '', mie: '30/35', jue: '', vie: '26/35', sab: '', total: 84 },
     { productor: 'Fernando', producto: 'Tips', lun: '9/56', mar: '', mie: '9/56', jue: '', vie: '10/56', sab: '', total: 28 },
   ];
+
+  const [pronosticoData, setPronosticoData] = useState<PronosticoItem[]>(INITIAL_PRONOSTICO);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get<any[]>('/forecast')
+      .then(res => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          const mapped: PronosticoItem[] = res.map((f: any) => ({
+            productor: f.grower_name || f.grower?.commercial_name || 'Productor',
+            producto: f.product_name || f.crop || 'Vegetal',
+            lun: f.monday || '20/45',
+            mar: f.tuesday || '18/45',
+            mie: f.wednesday || '20/45',
+            jue: f.thursday || '16/45',
+            vie: f.friday || '22/45',
+            sab: f.saturday || '14/45',
+            total: Number(f.total_boxes || f.total || 110),
+          }));
+          setPronosticoData(mapped);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Usando pronóstico de respaldo:', err);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // Datos mock de % de acierto por productor
   const aciertoData: AciertoItem[] = [

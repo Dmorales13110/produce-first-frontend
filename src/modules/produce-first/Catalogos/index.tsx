@@ -1,6 +1,8 @@
 // src/modules/produce-first/PF1_Catalogos.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../../services/apiClient';
+import { notifications } from '@mantine/notifications';
 import {
   Box,
   Container,
@@ -71,14 +73,14 @@ export function CatalogosView() {
   const [estadoClientes, setEstadoClientes] = useState('Activos');
 
   // --- Estados Captura Anticipos ---
-  const [antNapa, setAntNapa] = useState('$3.00');
-  const [antCeltuce, setAntCeltuce] = useState('$4.50');
-  const [antShanghai, setAntShanghai] = useState('$3.50');
-  const [antMieu, setAntMieu] = useState('$3.50');
-  const [antMiniNapa, setAntMiniNapa] = useState('$3.00');
+  const [antNapa, setAntNapa] = useState(() => localStorage.getItem('pf_ant_napa') || '$3.00');
+  const [antCeltuce, setAntCeltuce] = useState(() => localStorage.getItem('pf_ant_celtuce') || '$4.50');
+  const [antShanghai, setAntShanghai] = useState(() => localStorage.getItem('pf_ant_shanghai') || '$3.50');
+  const [antMieu, setAntMieu] = useState(() => localStorage.getItem('pf_ant_mieu') || '$3.50');
+  const [antMiniNapa, setAntMiniNapa] = useState(() => localStorage.getItem('pf_ant_mini_napa') || '$3.00');
 
-  // --- Datos Mock Clientes ---
-  const clientesData: ClienteItem[] = [
+  // --- Datos Mock de Respaldo Clientes ---
+  const INITIAL_CLIENTES: ClienteItem[] = [
     { cliente: 'GreenLeaf Produce', ciudad: 'Maspeth NY', taxId: '824188850', credito: '15d', cajas: '98,515', ventaUsd: '$1,252,035', avgCj: '$12.71' },
     { cliente: 'Grubmarket', ciudad: 'Brooklyn NY', taxId: '464890268', credito: '15d', cajas: '74,743', ventaUsd: '$1,085,476', avgCj: '$14.52' },
     { cliente: 'Fresh Direct', ciudad: 'Vancouver', taxId: '856228887', credito: '15d', cajas: '55,986', ventaUsd: '$793,558', avgCj: '$14.17' },
@@ -86,8 +88,8 @@ export function CatalogosView() {
     { cliente: 'Manley Sales', ciudad: 'Scarborough', taxId: '856592175', credito: '15d', cajas: '42,478', ventaUsd: '$519,918', avgCj: '$12.24' },
   ];
 
-  // --- Datos Mock Productores ---
-  const productoresData: ProductorItem[] = [
+  // --- Datos Mock de Respaldo Productores ---
+  const INITIAL_PRODUCTORES: ProductorItem[] = [
     { productor: 'Daily Veggies', contacto: 'Efrén Hernández', modalidad: '10% + $0.15 enfriado', especialidad: 'Shanghai Bok · Baby Bok', cajas: '147,467', ventaUsd: '$1,937,112' },
     { productor: 'Agrícola JAV', contacto: 'Raúl Monter', modalidad: '10% + $0.15 enfriado', especialidad: 'Mieu · Coliflor', cajas: '93,839', ventaUsd: '$1,220,559' },
     { productor: 'Daniel Zermeño', contacto: 'Cristóbal Loza', modalidad: '10% + $0.15 enfriado', especialidad: 'Coliflor · Celtuce · Mini Napa', cajas: '81,601', ventaUsd: '$1,047,046' },
@@ -95,11 +97,72 @@ export function CatalogosView() {
     { productor: 'Plantisano', contacto: 'Ismael Padilla', modalidad: '10% + $0.15 enfriado', especialidad: 'Coliflor', cajas: '12,822', ventaUsd: '$189,129' },
   ];
 
+  const [clientesData, setClientesData] = useState<ClienteItem[]>(INITIAL_CLIENTES);
+  const [productoresData, setProductoresData] = useState<ProductorItem[]>(INITIAL_PRODUCTORES);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    Promise.allSettled([
+      api.get<any[]>('/customers'),
+      api.get<any[]>('/growers'),
+    ]).then(([custRes, growRes]) => {
+      if (!isMounted) return;
+
+      if (custRes.status === 'fulfilled' && Array.isArray(custRes.value) && custRes.value.length > 0) {
+        const mappedCust: ClienteItem[] = custRes.value.map((c: any) => ({
+          cliente: c.business_name || c.name || c.commercial_name || 'Cliente',
+          ciudad: c.city ? `${c.city}${c.state ? ' ' + c.state : ''}` : (c.country || 'USA'),
+          taxId: c.tax_id || c.rfc || '—',
+          credito: `${c.credit_days || 15}d`,
+          cajas: (c.total_boxes || c.boxes || 0).toLocaleString(),
+          ventaUsd: `$${(c.total_sales || c.sales_usd || 0).toLocaleString()}`,
+          avgCj: `$${((c.total_sales || 0) / (c.total_boxes || 1) || 13.50).toFixed(2)}`,
+        }));
+        setClientesData(mappedCust);
+      }
+
+      if (growRes.status === 'fulfilled' && Array.isArray(growRes.value) && growRes.value.length > 0) {
+        const mappedGrow: ProductorItem[] = growRes.value.map((g: any) => ({
+          productor: g.commercial_name || g.name || 'Productor',
+          contacto: g.contact_name || g.legal_representative || 'N/A',
+          modalidad: g.commission_percentage ? `${g.commission_percentage}% + $0.15 enfriado` : '10% + $0.15 enfriado',
+          especialidad: g.specialty || (Array.isArray(g.crops) ? g.crops.join(' · ') : 'Hortalizas'),
+          cajas: (g.total_boxes || 0).toLocaleString(),
+          ventaUsd: `$${(g.total_sales || 0).toLocaleString()}`,
+        }));
+        setProductoresData(mappedGrow);
+      }
+    }).finally(() => {
+      if (isMounted) setIsLoading(false);
+    });
+
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleSaveAnticipos = () => {
+    localStorage.setItem('pf_ant_napa', antNapa);
+    localStorage.setItem('pf_ant_celtuce', antCeltuce);
+    localStorage.setItem('pf_ant_shanghai', antShanghai);
+    localStorage.setItem('pf_ant_mieu', antMieu);
+    localStorage.setItem('pf_ant_mini_napa', antMiniNapa);
+
+    notifications.show({
+      title: 'Anticipos guardados',
+      message: 'La configuración de anticipos por producto se guardó exitosamente',
+      color: 'green',
+      icon: <IconCheck size={16} />,
+      autoClose: 3000,
+    });
+  };
+
   // KPI Cards
   const kpiCards: KpiCard[] = [
     {
       label: 'Clientes Activos',
-      value: '15',
+      value: String(clientesData.length),
       sub: 'USA + Canadá · todos a 15 días',
       icon: IconShoppingCart,
       color: '#1A4B8C',
@@ -110,7 +173,7 @@ export function CatalogosView() {
     },
     {
       label: 'Productores',
-      value: '10',
+      value: String(productoresData.length),
       sub: '9 a comisión 10% · 1 precio fijo',
       icon: IconPlant,
       color: '#1F5C3A',
@@ -516,6 +579,7 @@ export function CatalogosView() {
                   leftSection={<IconCheck size={16} />}
                   size="xs"
                   style={{ backgroundColor: '#1A4B8C' }}
+                  onClick={handleSaveAnticipos}
                 >
                   Guardar anticipos
                 </Button>
