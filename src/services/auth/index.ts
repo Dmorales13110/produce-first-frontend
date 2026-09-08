@@ -11,6 +11,7 @@ export interface AuthUser {
     empresa_id?: string | null;
     rancho_id?: string | null;
     token: string | undefined;
+    refreshToken?: string | undefined;
 }
 
 export interface LoginResponse {
@@ -54,6 +55,9 @@ export const AuthService = {
             // Guardar tokens en localStorage
             if (response.data.token) {
                 localStorage.setItem('produce_first_token', response.data.token);
+            }
+            if (response.data.refreshToken) {
+                localStorage.setItem('produce_first_refresh_token', response.data.refreshToken);
             }
             
             // Guardar usuario completo con rol

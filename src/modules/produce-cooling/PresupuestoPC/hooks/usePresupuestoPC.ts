@@ -2,36 +2,23 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { BudgetService } from '../../../../services/budget';
-
-interface TarifasPC {
-  coolingPropio: number;
-  coolingTerceros: number;
-  hieloAllIn: number;
-  repack: number;
-  embolsado: number;
-}
-
-interface PresupuestoPCStats {
-  ingresoPlan: number;
-  gastoPlan: number;
-  utilidadPlan: number;
-  deudaTotal: number;
-}
+import { presupuestoPCService } from '../services/presupuestoPCService';
+import type {
+  TarifasPC,
+  VolumenPresupuestado,
+  CostoPC,
+  ResultadoPlan,
+  CapitalArranque,
+  PresupuestoPCStats,
+} from '../../types';
 
 export const usePresupuestoPC = () => {
-  const [tarifas, setTarifas] = useState<TarifasPC>({
-    coolingPropio: 0.70,
-    coolingTerceros: 1.00,
-    hieloAllIn: 1.35,
-    repack: 0.35,
-    embolsado: 3.00,
-  });
-  const [stats, setStats] = useState<PresupuestoPCStats>({
-    ingresoPlan: 0,
-    gastoPlan: 0,
-    utilidadPlan: 0,
-    deudaTotal: 0,
-  });
+  const [tarifas, setTarifas] = useState<TarifasPC>(presupuestoPCService.getTarifas());
+  const [volumen, setVolumen] = useState<VolumenPresupuestado[]>(presupuestoPCService.getVolumen());
+  const [costos, setCostos] = useState<CostoPC[]>(presupuestoPCService.getCostos());
+  const [resultado, setResultado] = useState<ResultadoPlan[]>(presupuestoPCService.getResultado());
+  const [capital, setCapital] = useState<CapitalArranque[]>(presupuestoPCService.getCapital());
+  const [stats, setStats] = useState<PresupuestoPCStats>(presupuestoPCService.getStats(presupuestoPCService.getTarifas(), presupuestoPCService.getCostos()));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,35 +27,50 @@ export const usePresupuestoPC = () => {
     setError(null);
 
     try {
-      // Obtener temporada activa
+      // Intentar obtener temporada activa y costos reales del backend
       const seasons = await BudgetService.getSeasons();
       const activeSeason = seasons.find(s => s.status === 'active');
       
       if (activeSeason) {
-        // Obtener costos
-        const costs = await BudgetService.getCosts(activeSeason.id);
-        // Obtener FOB
-        const fob = await BudgetService.getFOB(activeSeason.id);
-        
-        // Calcular estadísticas
-        const totalCost = costs.reduce((sum, c) => sum + c.san_aparicio + c.la_escondida, 0);
-        const totalFOB = fob.reduce((sum, f) => sum + f.fob_1 + f.fob_2, 0);
-        const commission = totalFOB * (activeSeason.commission_percent / 100);
+        const [costs, fob] = await Promise.allSettled([
+          BudgetService.getCosts(activeSeason.id),
+          BudgetService.getFOB(activeSeason.id),
+        ]);
 
-        setStats({
-          ingresoPlan: commission,
-          gastoPlan: totalCost,
-          utilidadPlan: commission - totalCost,
-          deudaTotal: 0,
-        });
+        if (costs.status === 'fulfilled' && costs.value.length > 0) {
+          const totalCost = costs.value.reduce((sum, c) => sum + (c.san_aparicio || 0) + (c.la_escondida || 0), 0);
+          setStats(prev => ({
+            ...prev,
+            totalCostos: totalCost || prev.totalCostos,
+          }));
+        }
       }
 
+      setTarifas(presupuestoPCService.getTarifas());
+      setVolumen(presupuestoPCService.getVolumen());
+      setCostos(presupuestoPCService.getCostos());
+      setResultado(presupuestoPCService.getResultado());
+      setCapital(presupuestoPCService.getCapital());
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar datos');
+      console.warn('⚠️ [usePresupuestoPC] Error cargando presupuesto del backend, usando datos base:', err);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const updateTarifas = useCallback((data: Partial<TarifasPC>) => {
+    const updated = presupuestoPCService.updateTarifas(data);
+    setTarifas({ ...updated });
+    setStats(presupuestoPCService.getStats(updated, costos));
+  }, [costos]);
+
+  const updateCosto = useCallback((key: string, valor: number) => {
+    presupuestoPCService.updateCosto(key, valor);
+    const updatedCostos = presupuestoPCService.getCostos();
+    setCostos([...updatedCostos]);
+    setStats(presupuestoPCService.getStats(tarifas, updatedCostos));
+  }, [tarifas]);
 
   useEffect(() => {
     loadData();
@@ -76,9 +78,15 @@ export const usePresupuestoPC = () => {
 
   return {
     tarifas,
+    volumen,
+    costos,
+    resultado,
+    capital,
     stats,
     isLoading,
     error,
+    updateTarifas,
+    updateCosto,
     refresh: loadData,
   };
 };

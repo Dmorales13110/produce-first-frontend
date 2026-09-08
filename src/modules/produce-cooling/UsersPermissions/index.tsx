@@ -24,10 +24,10 @@ export function UsersPermissionsView() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCreateUsuario = (data: any) => {
+  const handleCreateUsuario = async (data: any) => {
     setIsSubmitting(true);
     try {
-      const nuevo = createUsuario(data);
+      const nuevo = await createUsuario(data);
       notifications.show({
         title: 'Usuario creado',
         message: `${nuevo.usuario} creado exitosamente`,

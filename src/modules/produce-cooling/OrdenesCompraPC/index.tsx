@@ -27,10 +27,10 @@ export function OrdenesCompraPCView() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const options = ordenesCompraPCService.getOptions();
 
-  const handleCreateOrden = (data: any) => {
+  const handleCreateOrden = async (data: any) => {
     setIsSubmitting(true);
     try {
-      const nueva = createOrden(data);
+      const nueva = await createOrden(data);
       notifications.show({
         title: 'Orden de compra creada',
         message: `${nueva.noOC} creada exitosamente`,

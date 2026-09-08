@@ -2,28 +2,17 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { MachineryService } from '../../../../services/machinery';
-import type { MachineryEquipment, MachineryEvent } from '../../../../services/machinery';
-
-interface MaintenanceStats {
-  totalEquipos: number;
-  operando: number;
-  enReparacion: number;
-  detenido: number;
-  eventosHoy: number;
-  costoMantenimiento: number;
-}
+import { maintenanceService } from '../services/maintenanceService';
+import type {
+  Equipo,
+  EventoEquipo,
+  MaintenanceStats,
+} from '../../types';
 
 export const useMaintenance = () => {
-  const [equipos, setEquipos] = useState<MachineryEquipment[]>([]);
-  const [eventos, setEventos] = useState<MachineryEvent[]>([]);
-  const [stats, setStats] = useState<MaintenanceStats>({
-    totalEquipos: 0,
-    operando: 0,
-    enReparacion: 0,
-    detenido: 0,
-    eventosHoy: 0,
-    costoMantenimiento: 0,
-  });
+  const [equipos, setEquipos] = useState<Equipo[]>(maintenanceService.getEquipos());
+  const [eventos, setEventos] = useState<EventoEquipo[]>(maintenanceService.getEventos());
+  const [stats, setStats] = useState<MaintenanceStats>(maintenanceService.getStats());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ equipo: 'Todos', estado: 'Todos' });
@@ -33,30 +22,77 @@ export const useMaintenance = () => {
     setError(null);
 
     try {
-      const equipment = await MachineryService.getEquipment();
-      const events = await MachineryService.getEvents();
+      const [equipment, backendEvents] = await Promise.allSettled([
+        MachineryService.getEquipment(),
+        MachineryService.getEvents(),
+      ]);
 
-      setEquipos(equipment);
-      setEventos(events);
+      if (equipment.status === 'fulfilled' && equipment.value.length > 0) {
+        const mapped: Equipo[] = equipment.value.map((eq, idx) => ({
+          id: idx + 1,
+          nombre: eq.name,
+          capNominal: eq.brand || 'Capacidad nominal',
+          rendReal: eq.model || 'Rendimiento estándar',
+          ultServicio: eq.last_maintenance_date || 'pre-temporada',
+          costoMto: eq.total_maintenance_cost || 0,
+          estado: eq.status === 'operando' ? 'operando' : 'en falla',
+          editable: true,
+          lectura: eq.status === 'operando' ? 'Operando' : 'En falla',
+        }));
+        setEquipos(mapped);
+      } else {
+        setEquipos(maintenanceService.getEquipos(filters));
+      }
 
-      // Calcular estadísticas
-      setStats({
-        totalEquipos: equipment.length,
-        operando: equipment.filter(e => e.status === 'operando').length,
-        enReparacion: equipment.filter(e => e.status === 'en_reparacion').length,
-        detenido: equipment.filter(e => e.status === 'detenido').length,
-        eventosHoy: events.length,
-        costoMantenimiento: events
-          .filter(e => e.event_type === 'service')
-          .reduce((sum, e) => sum + (e.cost || 0), 0),
-      });
+      if (backendEvents.status === 'fulfilled' && backendEvents.value.length > 0) {
+        const mappedEvents: EventoEquipo[] = backendEvents.value.map((ev, idx) => ({
+          id: idx + 1,
+          tipo: ev.event_type === 'service' ? 'Servicio / reparación' : 'Lectura diaria',
+          equipo: ev.machinery?.name || 'Equipo de planta',
+          descripcion: ev.notes || ev.work_description || 'Mantenimiento preventivo',
+          costo: ev.cost ? `$${ev.cost}` : '$0',
+          lectura: ev.fuel_liters ? `${ev.fuel_liters} L` : 'Normal',
+          reporto: ev.operator_name || 'Operador túnel',
+          fecha: ev.event_date || '26-nov',
+        }));
+        setEventos(mappedEvents);
+      } else {
+        setEventos(maintenanceService.getEventos());
+      }
+
+      setStats(maintenanceService.getStats());
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar datos');
+      console.warn('⚠️ [useMaintenance] Usando fallback local para maquinaria:', err);
+      setEquipos(maintenanceService.getEquipos(filters));
+      setEventos(maintenanceService.getEventos());
+      setStats(maintenanceService.getStats());
     } finally {
       setIsLoading(false);
     }
   }, [filters]);
+
+  const updateEquipo = useCallback((id: number, rendReal: string) => {
+    maintenanceService.updateEquipo(id, rendReal);
+    setEquipos(maintenanceService.getEquipos(filters));
+  }, [filters]);
+
+  const saveEvento = useCallback((data: any) => {
+    const nuevo = maintenanceService.saveEvento(data);
+    setEventos(maintenanceService.getEventos());
+    try {
+      MachineryService.createEvent({
+        machinery_id: 'default',
+        event_date: new Date().toISOString().split('T')[0],
+        event_type: 'service',
+        notes: data.descripcion,
+        cost: Number(data.costo?.replace(/[^0-9.]/g, '')) || 0,
+      });
+    } catch (e) {
+      console.warn('⚠️ [useMaintenance] Fallo al guardar evento en backend:', e);
+    }
+    return nuevo;
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -70,6 +106,8 @@ export const useMaintenance = () => {
     error,
     filters,
     setFilters,
+    updateEquipo,
+    saveEvento,
     refresh: loadData,
   };
 };
