@@ -1,0 +1,144 @@
+/* ==========================================================================
+   PRODUCE FIRST ERP - CORE STYLES
+   ========================================================================== */
+
+/* --- 1. Variables Globales (Paleta Oficial) --- */
+:root {
+  --bg-main: #EFEDE6;          /* Fondo arena/beige claro */
+  --bg-surface: #FFFFFF;       /* Fondo de tarjetas, sidebar y topbar */
+  --border-color: #E0DDD2;     /* Bordes generales */
+  
+  /* Texto */
+  --text-primary: #3A3A34;     /* Gris oscuro cálido */
+  --text-secondary: #9B9B90;   /* Gris mitigado */
+  
+  /* Identificadores de Módulos */
+  --color-grower: #1F5C3A;     /* Verde - Módulo Grower */
+  --color-cooling: #2A6A8A;    /* Azul - Módulo Produce Cooling */
+  --color-first: #8A5A2A;      /* Marrón/Óxido - Módulo Produce First */
+  
+  /* Navegación y Hovers */
+  --sidebar-hover: #F3F1E9;
+  --sidebar-active: #EDEAE0;
+  
+  /* Sección de Campo (San Aparicio) */
+  --bg-field-buttons: #F3F6F1;
+  --btn-field-active: #2E8B57; /* Seagreen */
+  --border-field: #D8E4D2;
+  --bg-table-header: #4F6F52;
+  --text-currency: #b8860b;    /* Darkgoldenrod */
+
+  /* Badges de Grupos */
+  --badge-g2: #7EA8E8;
+  --badge-g3: #8FbC6f;
+  --badge-g4: #E8A838;
+  --badge-g5: #C98BD9;
+  --badge-g6: #5FB0A8;
+}
+
+/* --- 2. Estilos Base --- */
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- 3. Estructura y Contenedores --- */
+.sidebar, .topbar, .card {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color);
+}
+
+/* --- 4. Sidebar / Menú Lateral --- */
+.sidebar-item {
+  color: var(--text-primary);
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-item:hover {
+  background-color: var(--sidebar-hover) !important;
+}
+
+.sidebar-item.active {
+  background-color: var(--sidebar-active) !important;
+  font-weight: 700 !important;
+}
+
+/* --- 5. Clases de Identidad por Módulo --- */
+.text-module-grower { color: var(--color-grower) !important; }
+.text-module-cooling { color: var(--color-cooling) !important; }
+.text-module-first { color: var(--color-first) !important; }
+
+.bg-module-grower { background-color: var(--color-grower) !important; }
+.bg-module-cooling { background-color: var(--color-cooling) !important; }
+.bg-module-first { background-color: var(--color-first) !important; }
+
+/* --- 6. Sub-módulo de Campo (Control Operativo) --- */
+.field-button-container {
+  background-color: var(--bg-field-buttons) !important;
+  border: 1px solid var(--border-field);
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.btn-field-tab {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-field);
+  color: var(--text-primary);
+}
+
+.btn-field-tab.active {
+  background-color: var(--btn-field-active) !important;
+  color: #FFFFFF !important;
+  border-color: var(--btn-field-active) !important;
+}
+
+/* Banner interno de pestañas */
+.field-inner-banner {
+  background-color: var(--bg-table-header) !important;
+  color: #FFFFFF;
+}
+
+/* --- 7. Tabla de Control Operativo --- */
+.table-field {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table-field thead th {
+  background-color: var(--bg-table-header) !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  padding: 12px;
+  border: 1px solid var(--border-field);
+}
+
+.table-field tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-field);
+  color: var(--text-primary);
+}
+
+/* Formato de moneda para Costo Presupuestado */
+.currency-budget {
+  color: var(--text-currency) !important;
+  font-weight: bold;
+}
+
+/* --- 8. Badges de los Grupos --- */
+.badge-group {
+  color: #FFFFFF !important;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  text-align: center;
+}
+
+.badge-g2 { background-color: var(--badge-g2) !important; }
+.badge-g3 { background-color: var(--badge-g3) !important; }
+.badge-g4 { background-color: var(--badge-g4) !important; }
+.badge-g5 { background-color: var(--badge-g5) !important; }
+.badge-g6 { background-color: var(--badge-g6) !important; }
